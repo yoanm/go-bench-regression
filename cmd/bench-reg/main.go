@@ -24,8 +24,8 @@ func main() {
 	} else if threshold, err = strconv.ParseFloat(os.Args[1], 64); err != nil {
 		slog.Error("Threshold must be a valid float")
 		os.Exit(2) //nolint:mnd // Useless to move it as constant
-	} else if threshold > 100 || threshold <= 0 {
-		slog.Error("Threshold must be between 1% and 99%")
+	} else if threshold >= 100 || threshold <= 0 {
+		slog.Error("Threshold must be greater than 0% and lower than 100%")
 		os.Exit(2) //nolint:mnd // Useless to move it as constant
 	}
 
