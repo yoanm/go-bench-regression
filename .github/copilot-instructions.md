@@ -1,15 +1,15 @@
 ---
-description: 'Instructions for deps-diff-summary Go project'
+description: 'Instructions for go-bench-regression Go project'
 applyTo: '**/*.go,**/go.mod,**/go.sum'
 ---
 
-# Copilot Instructions for deps-diff-summary
+# Copilot Instructions for go-bench-regression
 
 This file provides context for AI assistants working in this Go library project. It combines project-specific guidance with idiomatic Go practices based on [Effective Go](https://go.dev/doc/effective_go), [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments), and [Google's Go Style Guide](https://google.github.io/styleguide/go/).
 
 ## Project Overview
 
-**deps-diff-summary** is a Go library module (module: `summary`) for comparing PHP Composer lock files. See README.md and SPECIFICATION.md for full details.
+**go-bench-regression** is a Go CLI (module: `summary`) for comparing output of benchstat command and detected regression above a provided threshold. It is designed to help developers identify performance regressions in their Go code by analyzing benchmark results.
 
 ## Build, Test, and Lint
 

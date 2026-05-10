@@ -21,16 +21,12 @@ func main() {
 	if len(os.Args) != 2 { //nolint:mnd // Useless to move it as constant
 		slog.Error(fmt.Sprintf("Missing threshold argument. Usage: %s [threshold_percentage]\n", cmdName))
 		os.Exit(1)
-	} else {
-		if threshold, err = strconv.ParseFloat(os.Args[1], 64); err != nil {
-			slog.Error("Threshold must be a valid float")
-			os.Exit(2) //nolint:mnd // Useless to move it as constant
-		}
-
-		if threshold > 100 || threshold <= 0 {
-			slog.Error("Threshold must be between 1% and 99%")
-			os.Exit(2) //nolint:mnd // Useless to move it as constant
-		}
+	} else if threshold, err = strconv.ParseFloat(os.Args[1], 64); err != nil {
+		slog.Error("Threshold must be a valid float")
+		os.Exit(2) //nolint:mnd // Useless to move it as constant
+	} else if threshold > 100 || threshold <= 0 {
+		slog.Error("Threshold must be between 1% and 99%")
+		os.Exit(2) //nolint:mnd // Useless to move it as constant
 	}
 
 	stat, _ := os.Stdin.Stat()
