@@ -17,7 +17,7 @@ const (
 )
 
 // Match lines like: "BenchmarkAbc-42  230ns  123ns  +90.00%".
-var deltaRegex = regexp.MustCompile(`([+-]\d+\.?\d*)%`) // TODO: Add "Benchmark" header to the regexp ??
+var deltaRegex = regexp.MustCompile(`([+-]\d+\.?\d*)%`)
 
 func Run(scanner *bufio.Scanner, threshold float64) bool {
 	regMap, osTxt, archTxt, cpuTxt := parseData(scanner, threshold)
