@@ -1,0 +1,74 @@
+name: 'CI reusable workflow'
+
+on:
+  workflow_call:
+
+jobs:
+  coverage:
+    name: Go
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: ./go.sum
+
+      - name: Build
+        run: make build
+
+      - name: Run tests
+        run: make test-go gotest_o="-race -covermode=atomic -coverprofile=coverage.out"
+
+      - name: Create coverage group
+        id: tests-coverage-group
+        uses: yoanm/temp-reports-group-workspace/create-group@v0
+        with:
+          format: clover
+          files: coverage.out
+          path: build/coverage-groups
+
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-group
+          path: build/coverage-groups
+          if-no-files-found: error
+
+  static:
+    name: Static analysis
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: ./go.sum
+
+      - name: Verify dependencies
+        run: make verify-deps
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.11
+
+      - name: Documentation
+        env:
+          CI: false # If true, command thinks it's goreadme GHAction context (see https://github.com/posener/goreadme/issues/120)
+        run: |
+          make configure-dev-env && make build-doc
+          if [ ! "$(git status -s | wc -l)" -eq 0 ]; then
+              echo "::error::Documentation is not up to date ! Run 'make build-doc' "
+              exit 1;
+          fi
+          echo "Documentation is up to date 👌"
+          exit 0
