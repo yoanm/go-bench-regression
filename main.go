@@ -27,12 +27,12 @@ func Run(scanner *bufio.Scanner, threshold float64) bool {
 
 func parseData(scanner *bufio.Scanner, threshold float64) (map[string][]string, string, string, string) {
 	regMap := map[string][]string{} // Regressions list by packages
+	currentPkg := "UNKNOWN"         // Default value in case of no package header !
 
 	var (
-		currentPkg string
-		osTxt      string
-		archTxt    string
-		cpuTxt     string
+		osTxt   string
+		archTxt string
+		cpuTxt  string
 	)
 
 	for scanner.Scan() {
