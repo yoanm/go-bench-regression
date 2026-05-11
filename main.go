@@ -16,8 +16,8 @@ const (
 	cpuPrefix      = "cpu: "
 	sectionKeyword = " vs base "
 
-	unknownPackage = "Unknown"
-	unknownSection = "Unknown"
+	unknownPackage = "Unknown section"
+	unknownSection = "Unknown package"
 )
 
 // Match lines like: "BenchmarkAbc-42  230ns  123ns  +90.00%".
@@ -121,7 +121,7 @@ func parseLine(line string, threshold float64) string {
 	if matches := deltaRegex.FindStringSubmatch(line); len(matches) > 1 {
 		delta, err := strconv.ParseFloat(matches[1], 64)
 		if err != nil {
-			slog.Error("Error parsing delta. Skipping line", "line", line)
+			slog.Warn("Error parsing delta. Skipping line", "line", line)
 
 			return ""
 		}

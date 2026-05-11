@@ -75,6 +75,23 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"ERROR     geomean (12.87% slower)",
 			},
 		},
+
+		{
+			name:           "base-case: 9 regression above 10% with 3 geomean - with 50% threshold",
+			threshold:      50,
+			fixture:        "base_case-9_regressions_above_10perc_with_3_geomean.txt",
+			expectedResult: false,
+			expectedOutput: []string{
+				"ERROR Performance regression detected (threshold: 50.0%):",
+				"ERROR Os \"linux\" / Arch \"amd64\" / CPU \"AMD EPYC 7763 64-Core Processor\"",
+				"ERROR Package: github.com/yoanm/go-deps-diff",
+				"ERROR   B/op",
+				"ERROR     Diff_ComposerDiff-4 (52.24% slower)",
+				"ERROR Package: github.com/yoanm/go-deps-diff/managers/composer",
+				"ERROR   B/op",
+				"ERROR     BuildMapFromBytes-4 (61.47% slower)",
+			},
+		},
 		{
 			name:           "base-case: regression below 1% - with 0.1% threshold",
 			threshold:      0.1,
@@ -88,6 +105,15 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"ERROR     GenerateForChanges-4 (0.35% slower)",
 				"ERROR   allocs/op",
 				"ERROR     GenerateForChanges-4 (0.24% slower)",
+			},
+		},
+		{
+			name:           "base-case: regression below 1% - with 1% threshold",
+			threshold:      1,
+			fixture:        "base_case-regression_below_1perc.txt",
+			expectedResult: true,
+			expectedOutput: []string{
+				"INFO All good 🎉.",
 			},
 		},
 		{

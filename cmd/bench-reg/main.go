@@ -15,6 +15,13 @@ func main() {
 	os.Exit(execute())
 }
 
+const (
+	missingArgsExitCode        = 1
+	invalidThresholdExitCode   = 2
+	missingInputExitCode       = 3
+	regressionDetectedExitCode = 4
+)
+
 func execute() int {
 	var threshold float64 // Acceptable regression (10% for instance)
 
@@ -25,15 +32,15 @@ func execute() int {
 	if len(os.Args) != 2 { //nolint:mnd // Useless to move it as constant
 		slog.Error(fmt.Sprintf("Missing threshold argument. Usage: %s [threshold_percentage]\n", cmdName))
 
-		return 1
+		return missingArgsExitCode
 	} else if threshold, err = strconv.ParseFloat(os.Args[1], 64); err != nil {
 		slog.Error("Threshold must be a valid float")
 
-		return 2 //nolint:mnd // Useless to move it as constant
+		return invalidThresholdExitCode
 	} else if threshold >= 100 || threshold <= 0 {
 		slog.Error("Threshold must be greater than 0% and lower than 100%")
 
-		return 2 //nolint:mnd // Useless to move it as constant
+		return invalidThresholdExitCode
 	}
 
 	stat, _ := os.Stdin.Stat()
@@ -43,11 +50,11 @@ func execute() int {
 				"cat benchstat.out | " + cmdName + " [threshold_percentage]",
 		)
 
-		return 3 //nolint:mnd // Useless to move it as constant
+		return missingInputExitCode
 	}
 
 	if !benchreg.Run(bufio.NewScanner(os.Stdin), threshold) {
-		return 4 //nolint:mnd // Useless to move it as constant
+		return regressionDetectedExitCode
 	}
 
 	return 0
