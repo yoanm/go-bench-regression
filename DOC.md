@@ -2,7 +2,7 @@
 
 ## Functions
 
-### func [Run](/main.go#L22)
+### func [Run](/main.go#L29)
 
 `func Run(scanner *bufio.Scanner, threshold float64) bool`
 
