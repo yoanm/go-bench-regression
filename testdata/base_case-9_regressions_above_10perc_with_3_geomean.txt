@@ -1,0 +1,52 @@
+goos: linux
+goarch: amd64
+pkg: github.com/yoanm/go-deps-diff
+cpu: AMD EPYC 7763 64-Core Processor
+                    │ previous.txt │            current.txt             │
+                    │    sec/op    │   sec/op     vs base               │
+Diff_ComposerDiff-4    11.45m ± 4%   15.82m ± 7%  +38.10% (p=0.001 n=7)
+
+                    │ previous.txt │             current.txt             │
+                    │     B/op     │     B/op      vs base               │
+Diff_ComposerDiff-4   13.25Mi ± 0%   20.17Mi ± 0%  +52.24% (p=0.001 n=7)
+
+                    │ previous.txt │            current.txt             │
+                    │  allocs/op   │  allocs/op   vs base               │
+Diff_ComposerDiff-4    163.2k ± 0%   223.2k ± 0%  +36.77% (p=0.001 n=7)
+
+pkg: github.com/yoanm/go-deps-diff/managers/composer
+                    │ previous.txt │             current.txt             │
+                    │    sec/op    │    sec/op     vs base               │
+ParseLock-4            687.0µ ± 1%    680.6µ ± 9%        ~ (p=0.209 n=7)
+ParseReq-4             241.5µ ± 7%    239.8µ ± 6%        ~ (p=0.259 n=7)
+BuildMapFromBytes-4    916.9µ ± 4%   1307.4µ ± 3%  +42.58% (p=0.001 n=7)
+geomean                533.8µ         597.5µ       +11.93%
+
+                    │ previous.txt  │             current.txt              │
+                    │     B/op      │     B/op       vs base               │
+ParseLock-4            246.3Ki ± 0%    246.3Ki ± 0%        ~ (p=0.269 n=7)
+ParseReq-4             196.2Ki ± 0%    196.2Ki ± 0%        ~ (p=0.636 n=7)
+BuildMapFromBytes-4   1006.9Ki ± 0%   1625.8Ki ± 0%  +61.47% (p=0.001 n=7)
+geomean                365.0Ki         428.2Ki       +17.32%
+
+                    │ previous.txt │             current.txt              │
+                    │  allocs/op   │  allocs/op   vs base                 │
+ParseLock-4            4.029k ± 0%   4.029k ± 0%        ~ (p=1.000 n=7) ¹
+ParseReq-4             3.042k ± 0%   3.042k ± 0%        ~ (p=1.000 n=7) ¹
+BuildMapFromBytes-4    12.71k ± 0%   18.28k ± 0%  +43.80% (p=0.001 n=7)
+geomean                5.381k        6.073k       +12.87%
+¹ all samples are equal
+
+pkg: github.com/yoanm/go-deps-diff/summary
+                     │ previous.txt │         current.txt          │
+                     │    sec/op    │   sec/op     vs base         │
+GenerateForChanges-4    145.2µ ± 6%   144.3µ ± 5%  ~ (p=1.000 n=7)
+
+                     │ previous.txt │          current.txt          │
+                     │     B/op     │     B/op      vs base         │
+GenerateForChanges-4   233.5Ki ± 0%   233.5Ki ± 0%  ~ (p=0.550 n=7)
+
+                     │ previous.txt │          current.txt           │
+                     │  allocs/op   │  allocs/op   vs base           │
+GenerateForChanges-4    1.464k ± 0%   1.464k ± 0%  ~ (p=1.000 n=7) ¹
+¹ all samples are equal

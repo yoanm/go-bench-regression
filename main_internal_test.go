@@ -496,3 +496,147 @@ func Test_parseData_benchmarkName(t *testing.T) {
 		})
 	}
 }
+
+func Test_processResults_withRegressions(t *testing.T) {
+	t.Parallel()
+
+	regMap := map[string][]string{
+		"package1": {"  Bench1 (10.00% slower)", "  Bench2 (15.00% slower)"},
+		"package2": {"  Bench3 (5.50% slower)"},
+	}
+
+	result := processResults(regMap, 5, "linux", "amd64", "Intel")
+	if result != false {
+		t.Errorf("processResults with regressions should return false, got %v", result)
+	}
+}
+
+func Test_processResults_noRegressions(t *testing.T) {
+	t.Parallel()
+
+	regMap := map[string][]string{}
+
+	result := processResults(regMap, 5, "linux", "amd64", "Intel")
+	if result != true {
+		t.Errorf("processResults without regressions should return true, got %v", result)
+	}
+}
+
+func Test_processResults_emptyRegressionList(t *testing.T) {
+	t.Parallel()
+
+	// Map with empty lists should be treated as no regressions
+	regMap := map[string][]string{
+		"pkg1": {},
+	}
+
+	result := processResults(regMap, 5, "linux", "amd64", "Intel")
+	// Since regMap length > 0, this should return false
+	if result != false {
+		t.Errorf("processResults with non-empty map should return false, got %v", result)
+	}
+}
+
+func Test_Run_noRegressions(t *testing.T) {
+	t.Parallel()
+
+	input := `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkA-8    100  100ns  105ns  +5.00%
+BenchmarkB-8    100  100ns  110ns  +10.00%`
+
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	result := Run(scanner, 15)
+
+	if result != true {
+		t.Errorf("Run() with all regressions below threshold should return true, got %v", result)
+	}
+}
+
+func Test_Run_detectsRegressions(t *testing.T) {
+	t.Parallel()
+
+	input := `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkA-8    100  100ns  150ns  +50.00%
+BenchmarkB-8    100  100ns  110ns  +10.00%`
+
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	result := Run(scanner, 20)
+
+	if result != false {
+		t.Errorf("Run() with regression above threshold should return false, got %v", result)
+	}
+}
+
+func Test_Run_emptyInput(t *testing.T) {
+	t.Parallel()
+
+	input := ""
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	result := Run(scanner, 5)
+
+	if result != true {
+		t.Errorf("Run() with empty input should return true, got %v", result)
+	}
+}
+
+func Test_Run_metadataOnly(t *testing.T) {
+	t.Parallel()
+
+	input := `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel`
+
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	result := Run(scanner, 5)
+
+	if result != true {
+		t.Errorf("Run() with metadata only should return true, got %v", result)
+	}
+}
+
+func Test_Run_multiplePackages(t *testing.T) {
+	t.Parallel()
+
+	input := `pkg: pkg1
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkA-8    100  100ns  120ns  +20.00%
+
+pkg: pkg2
+BenchmarkB-8    100  100ns  115ns  +15.00%`
+
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	result := Run(scanner, 10)
+
+	// Both have regressions above 10%, should return false
+	if result != false {
+		t.Errorf("Run() with multiple packages with regressions should return false, got %v", result)
+	}
+}
+
+func Test_Run_onlyImprovements(t *testing.T) {
+	t.Parallel()
+
+	input := `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkA-8    100  100ns  50ns  -50.00%
+BenchmarkB-8    100  100ns  80ns  -20.00%`
+
+	scanner := bufio.NewScanner(strings.NewReader(input))
+	result := Run(scanner, 5)
+
+	// Only improvements (negative deltas), no regressions
+	if result != true {
+		t.Errorf("Run() with only improvements should return true, got %v", result)
+	}
+}
