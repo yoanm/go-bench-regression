@@ -12,7 +12,7 @@ import (
 	benchreg "github.com/yoanm/go-bench-regression"
 )
 
-func TestCLI_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelized due to log output override !
+func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelized due to log output override !
 	tests := []struct {
 		name           string
 		threshold      float64
@@ -29,8 +29,23 @@ func TestCLI_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallel
 				"ERROR Performance regression detected (threshold: 10.0%):",
 				"ERROR Os \"linux\" / Arch \"amd64\" / CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"ERROR Package: github.com/yoanm/go-deps-diff/summary",
-				"ERROR   GenerateForChanges-4 (12.39% slower)",
-				"ERROR   GenerateForChanges-4 (11.75% slower)",
+				"ERROR   sec/op",
+				"ERROR     GenerateForChanges-4 (12.39% slower)",
+				"ERROR   allocs/op",
+				"ERROR     GenerateForChanges-4 (11.75% slower)",
+			},
+		},
+		{
+			name:           "base-case: 2 regressions above 10% - with 12% threshold",
+			threshold:      12,
+			fixture:        "base_case-2_regressions_above_10perc.txt",
+			expectedResult: false,
+			expectedOutput: []string{
+				"ERROR Performance regression detected (threshold: 12.0%):",
+				"ERROR Os \"linux\" / Arch \"amd64\" / CPU \"AMD EPYC 7763 64-Core Processor\"",
+				"ERROR Package: github.com/yoanm/go-deps-diff/summary",
+				"ERROR   sec/op",
+				"ERROR     GenerateForChanges-4 (12.39% slower)",
 			},
 		},
 		{
@@ -42,16 +57,22 @@ func TestCLI_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallel
 				"ERROR Performance regression detected (threshold: 10.0%):",
 				"ERROR Os \"linux\" / Arch \"amd64\" / CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"ERROR Package: github.com/yoanm/go-deps-diff",
-				"ERROR   Diff_ComposerDiff-4 (38.10% slower)",
-				"ERROR   Diff_ComposerDiff-4 (52.24% slower)",
-				"ERROR   Diff_ComposerDiff-4 (36.77% slower)",
+				"ERROR   sec/op",
+				"ERROR     Diff_ComposerDiff-4 (38.10% slower)",
+				"ERROR   B/op",
+				"ERROR     Diff_ComposerDiff-4 (52.24% slower)",
+				"ERROR   allocs/op",
+				"ERROR     Diff_ComposerDiff-4 (36.77% slower)",
 				"ERROR Package: github.com/yoanm/go-deps-diff/managers/composer",
-				"ERROR   BuildMapFromBytes-4 (42.58% slower)",
-				"ERROR   geomean (11.93% slower)",
-				"ERROR   BuildMapFromBytes-4 (61.47% slower)",
-				"ERROR   geomean (17.32% slower)",
-				"ERROR   BuildMapFromBytes-4 (43.80% slower)",
-				"ERROR   geomean (12.87% slower)",
+				"ERROR   sec/op",
+				"ERROR     BuildMapFromBytes-4 (42.58% slower)",
+				"ERROR     geomean (11.93% slower)",
+				"ERROR   B/op",
+				"ERROR     BuildMapFromBytes-4 (61.47% slower)",
+				"ERROR     geomean (17.32% slower)",
+				"ERROR   allocs/op",
+				"ERROR     BuildMapFromBytes-4 (43.80% slower)",
+				"ERROR     geomean (12.87% slower)",
 			},
 		},
 		{
@@ -63,8 +84,10 @@ func TestCLI_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallel
 				"ERROR Performance regression detected (threshold: 0.1%):",
 				"ERROR Os \"linux\" / Arch \"amd64\" / CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"ERROR Package: github.com/yoanm/go-deps-diff-summary",
-				"ERROR   GenerateForChanges-4 (0.35% slower)",
-				"ERROR   GenerateForChanges-4 (0.24% slower)",
+				"ERROR   B/op",
+				"ERROR     GenerateForChanges-4 (0.35% slower)",
+				"ERROR   allocs/op",
+				"ERROR     GenerateForChanges-4 (0.24% slower)",
 			},
 		},
 		{
@@ -76,11 +99,15 @@ func TestCLI_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallel
 				"ERROR Performance regression detected (threshold: 20.0%):",
 				"ERROR Os \"linux\" / Arch \"amd64\" / CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"ERROR Package: github.com/yoanm/go-deps-diff",
-				"ERROR   Diff_ComposerDiff-4 (28.86% slower)",
-				"ERROR   Diff_ComposerDiff-4 (34.91% slower)",
+				"ERROR   B/op",
+				"ERROR     Diff_ComposerDiff-4 (28.86% slower)",
+				"ERROR   allocs/op",
+				"ERROR     Diff_ComposerDiff-4 (34.91% slower)",
 				"ERROR Package: github.com/yoanm/go-deps-diff/managers/composer",
-				"ERROR   BuildMapFromBytes-4 (28.32% slower)",
-				"ERROR   BuildMapFromBytes-4 (23.88% slower)",
+				"ERROR   B/op",
+				"ERROR     BuildMapFromBytes-4 (28.32% slower)",
+				"ERROR   allocs/op",
+				"ERROR     BuildMapFromBytes-4 (23.88% slower)",
 			},
 		},
 	}
@@ -105,18 +132,22 @@ func TestCLI_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallel
 				t.Errorf("expected first result %t, got %t", testCase.expectedResult, result)
 			} else {
 				out := buf.String()
-				hasError := false
+				testScanner := bufio.NewScanner(&buf)
 
-				for _, txt := range testCase.expectedOutput {
-					if !strings.Contains(out, txt) {
-						t.Errorf("expected to contain %q, but doesn't", txt)
-
-						hasError = true
+				expOutKey := 0
+				for testScanner.Scan() {
+					if strings.Contains(testScanner.Text(), testCase.expectedOutput[expOutKey]) {
+						expOutKey++
 					}
 				}
 
-				if hasError {
-					t.Log("Current output: ", out)
+				if expOutKey != len(testCase.expectedOutput) {
+					t.Errorf(
+						"Unmatched expected output. Starting from expectation %d -> %q",
+						expOutKey,
+						testCase.expectedOutput[expOutKey],
+					)
+					t.Error("Actual output:\n" + out)
 				}
 			}
 		})

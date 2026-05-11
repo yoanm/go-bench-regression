@@ -2,6 +2,7 @@ package benchreg
 
 import (
 	"bufio"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -20,19 +21,19 @@ func Test_parseLine(t *testing.T) {
 			name:      "simple regression above threshold",
 			line:      "BenchmarkFunc-8      100  101ns ± 1%  120ns ± 0%  +18.81%",
 			threshold: 5,
-			want:      "  BenchmarkFunc-8 (18.81% slower)",
+			want:      "BenchmarkFunc-8 (18.81% slower)",
 		},
 		{
 			name:      "large regression",
 			line:      "BenchmarkLarge-4     50   5000ns ± 2%  10000ns ± 1%  +100.00%",
 			threshold: 10,
-			want:      "  BenchmarkLarge-4 (100.00% slower)",
+			want:      "BenchmarkLarge-4 (100.00% slower)",
 		},
 		{
 			name:      "small regression above threshold",
 			line:      "BenchmarkSmall-8     1000  100ns ± 0%  105.5ns ± 0%  +5.50%",
 			threshold: 5,
-			want:      "  BenchmarkSmall-8 (5.50% slower)",
+			want:      "BenchmarkSmall-8 (5.50% slower)",
 		},
 
 		// Threshold edge cases
@@ -46,7 +47,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "delta just above threshold",
 			line:      "BenchmarkAbove-8     200  200ns ± 1%  220.1ns ± 0%  +10.05%",
 			threshold: 10,
-			want:      "  BenchmarkAbove-8 (10.05% slower)",
+			want:      "BenchmarkAbove-8 (10.05% slower)",
 		},
 		{
 			name:      "delta just below threshold",
@@ -80,7 +81,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "line with malformed delta double plus - regex still matches the second +",
 			line:      "BenchmarkMalform-8   100  100ns ± 0%  120ns ± 0%  ++15%",
 			threshold: 5,
-			want:      "  BenchmarkMalform-8 (15.00% slower)",
+			want:      "BenchmarkMalform-8 (15.00% slower)",
 		},
 		{
 			name:      "line with malformed delta plus minus",
@@ -98,7 +99,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "line with no benchmark data but with delta - still matches (regex is liberal)",
 			line:      "some random text with +50%",
 			threshold: 5,
-			want:      "  some (50.00% slower)",
+			want:      "some (50.00% slower)",
 		},
 
 		// Zero and boundary values
@@ -124,7 +125,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "decimal threshold above",
 			line:      "BenchmarkDecimal2-8  500   1000ns ± 1%  1026ns ± 0%  +2.60%",
 			threshold: 2.5,
-			want:      "  BenchmarkDecimal2-8 (2.60% slower)",
+			want:      "BenchmarkDecimal2-8 (2.60% slower)",
 		},
 
 		// Multiple delta values in line (only first should be captured)
@@ -132,7 +133,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "line with multiple percents (only first delta used)",
 			line:      "BenchmarkMulti-8     100  50ns ± 5%  100ns ± 2%  +100.00%",
 			threshold: 50,
-			want:      "  BenchmarkMulti-8 (100.00% slower)",
+			want:      "BenchmarkMulti-8 (100.00% slower)",
 		},
 
 		// Very large regressions
@@ -140,7 +141,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "extremely large regression",
 			line:      "BenchmarkHuge-2      10   1000000ns ± 1%  50000000ns ± 0%  +4900.00%",
 			threshold: 100,
-			want:      "  BenchmarkHuge-2 (4900.00% slower)",
+			want:      "BenchmarkHuge-2 (4900.00% slower)",
 		},
 
 		// Realistic benchstat output variations
@@ -148,7 +149,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "typical benchstat line format with moderate regression",
 			line:      "BenchmarkEncode-4    2000  500ns ± 1%   600ns ± 2%   +20.00%",
 			threshold: 15,
-			want:      "  BenchmarkEncode-4 (20.00% slower)",
+			want:      "BenchmarkEncode-4 (20.00% slower)",
 		},
 	}
 
@@ -174,10 +175,22 @@ cpu: Intel(R) Core(TM) i7-8700K CPU @ 3.70GHz
 BenchmarkFunc-8      100  101ns ± 1%  120ns ± 0%  +18.81%
 BenchmarkOther-8     200  50ns ± 0%   45ns ± 0%   -10.00%`
 
+	expectedPkgName := "mypackage"
+	expectedPkgOrder := []string{expectedPkgName}
+	expectedSectionOrder := []string{unknownSection}
+
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, osTxt, archTxt, cpuTxt := parseData(scanner, 5)
+	regMap, pkgOrder, sectionOrder, osTxt, archTxt, cpuTxt := parseData(scanner, 5)
 
 	// Check metadata extracted
+	if !slices.Equal(pkgOrder, expectedPkgOrder) {
+		t.Errorf("expected pkgOrder=%v, got %v", expectedPkgOrder, pkgOrder)
+	}
+
+	if !slices.Equal(sectionOrder, expectedSectionOrder) {
+		t.Errorf("expected sectionOrder=%v, got %v", expectedSectionOrder, sectionOrder)
+	}
+
 	if osTxt != "linux" {
 		t.Errorf("expected osTxt='linux', got %q", osTxt)
 	}
@@ -195,21 +208,26 @@ BenchmarkOther-8     200  50ns ± 0%   45ns ± 0%   -10.00%`
 		t.Errorf("expected 1 package in regMap, got %d", len(regMap))
 	}
 
-	pkgRegs, exists := regMap["mypackage"]
-	if !exists {
-		t.Fatal("expected 'mypackage' in regMap")
+	pkgRegs, pkgExists := regMap[expectedPkgName]
+	if !pkgExists {
+		t.Fatal("expected '" + expectedPkgName + "' package in regMap")
 	}
 
-	if len(pkgRegs) != 1 {
-		t.Errorf("expected 1 regression for 'mypackage', got %d: %v", len(pkgRegs), pkgRegs)
+	sectionRegs, sectionExists := pkgRegs[unknownSection]
+	if !sectionExists {
+		t.Fatal("expected '" + unknownSection + "' section in pkgRegs")
 	}
 
-	if !strings.Contains(pkgRegs[0], "BenchmarkFunc-8") {
-		t.Errorf("expected regression to contain 'BenchmarkFunc-8', got %q", pkgRegs[0])
+	if len(sectionRegs) != 1 {
+		t.Errorf("expected 1 regression for 'mypackage', got %d: %v", len(sectionRegs), sectionRegs)
 	}
 
-	if !strings.Contains(pkgRegs[0], "18.81") {
-		t.Errorf("expected regression to contain '18.81', got %q", pkgRegs[0])
+	if !strings.Contains(sectionRegs[0], "BenchmarkFunc-8") {
+		t.Errorf("expected regression to contain 'BenchmarkFunc-8', got %q", sectionRegs[0])
+	}
+
+	if !strings.Contains(sectionRegs[0], "18.81") {
+		t.Errorf("expected regression to contain '18.81', got %q", sectionRegs[0])
 	}
 }
 
@@ -226,10 +244,23 @@ pkg: package2
 BenchmarkEncode-8    2000  500ns ± 1%   600ns ± 2%   +20.00%
 BenchmarkDecode-8    1500  300ns ± 0%   250ns ± 1%   -16.67%`
 
+	expectedPkg1Name := "package1"
+	expectedPkg2Name := "package2"
+	expectedPkgOrder := []string{expectedPkg1Name, expectedPkg2Name}
+	expectedSectionOrder := []string{unknownSection}
+
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, osTxt, archTxt, cpuTxt := parseData(scanner, 15)
+	regMap, pkgOrder, sectionOrder, osTxt, archTxt, cpuTxt := parseData(scanner, 15)
 
 	// Verify metadata (only first occurrence captured)
+	if !slices.Equal(pkgOrder, expectedPkgOrder) {
+		t.Errorf("expected pkgOrder=%v, got %v", expectedPkgOrder, pkgOrder)
+	}
+
+	if !slices.Equal(sectionOrder, expectedSectionOrder) {
+		t.Errorf("expected sectionOrder=%v, got %v", expectedSectionOrder, sectionOrder)
+	}
+
 	if osTxt != "darwin" {
 		t.Errorf("expected osTxt='darwin', got %q", osTxt)
 	}
@@ -248,23 +279,33 @@ BenchmarkDecode-8    1500  300ns ± 0%   250ns ± 1%   -16.67%`
 	}
 
 	// package1 should have 1 regression (50% > 15)
-	pkg1, exists := regMap["package1"]
+	pkgRegs, exists := regMap[expectedPkg1Name]
 	if !exists {
-		t.Fatal("expected 'package1' in regMap")
+		t.Fatal("expected '" + expectedPkg1Name + "' in regMap")
 	}
 
-	if len(pkg1) != 1 {
-		t.Errorf("expected 1 regression for 'package1', got %d", len(pkg1))
+	sectionRegs, sectionExists := pkgRegs[unknownSection]
+	if !sectionExists {
+		t.Fatal("expected '" + unknownSection + "' section in pkgRegs")
+	}
+
+	if len(sectionRegs) != 1 {
+		t.Errorf("expected 1 regression for '"+expectedPkg1Name+"', got %d", len(sectionRegs))
 	}
 
 	// package2 should have 1 regression (20% > 15, -16.67% is improvement and ignored)
-	pkg2, exists := regMap["package2"]
-	if !exists {
-		t.Fatal("expected 'package2' in regMap")
+	pkg2Regs, exists2 := regMap[expectedPkg2Name]
+	if !exists2 {
+		t.Fatal("expected '" + expectedPkg2Name + "' in regMap")
 	}
 
-	if len(pkg2) != 1 {
-		t.Errorf("expected 1 regression for 'package2', got %d: %v", len(pkg2), pkg2)
+	section2Regs, sectionExists2 := pkg2Regs[unknownSection]
+	if !sectionExists2 {
+		t.Fatal("expected '" + unknownSection + "' section in pkgRegs")
+	}
+
+	if len(section2Regs) != 1 {
+		t.Errorf("expected 1 regression for '"+expectedPkg2Name+"', got %d: %v", len(section2Regs), section2Regs)
 	}
 }
 
@@ -281,7 +322,7 @@ cpu: Apple-Second
 pkg: testpkg`
 
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	_, osTxt, archTxt, cpuTxt := parseData(scanner, 5)
+	_, _, _, osTxt, archTxt, cpuTxt := parseData(scanner, 5) //nolint:dogsled // Focused on os/arch/cpu only
 
 	// Should use first occurrence of each
 	if osTxt != "linux" {
@@ -308,11 +349,16 @@ BenchmarkB-8    100  100ns  50ns   -50.00%
 BenchmarkC-8    100  100ns  120ns  +20.00%`
 
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, _, _, _ := parseData(scanner, 25) //nolint:dogsled // We only care about regressions here
+	regMap, _, _, _, _, _ := parseData(scanner, 25) //nolint:dogsled // We only care about regressions here
 
-	regressions, exists := regMap["mixedpkg"]
+	pkgRegs, exists := regMap["mixedpkg"]
 	if !exists {
 		t.Fatal("expected 'mixedpkg' in regMap")
+	}
+
+	regressions, sectionExists := pkgRegs[unknownSection]
+	if !sectionExists {
+		t.Fatal("expected '" + unknownSection + "' section in pkgRegs")
 	}
 
 	// Only +50% should be included (both above 25 threshold and positive)
@@ -331,10 +377,18 @@ func Test_parseData_emptyInput(t *testing.T) {
 
 	input := ""
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, osTxt, archTxt, cpuTxt := parseData(scanner, 5)
+	regMap, pkgOrder, sectionOrder, osTxt, archTxt, cpuTxt := parseData(scanner, 5)
 
 	if len(regMap) != 0 {
 		t.Errorf("expected empty regMap for empty input, got %v", regMap)
+	}
+
+	if len(pkgOrder) != 0 {
+		t.Errorf("expected empty pkgOrder, got %v", pkgOrder)
+	}
+
+	if len(sectionOrder) != 0 {
+		t.Errorf("expected empty sectionOrder, got %v", sectionOrder)
 	}
 
 	if osTxt != "" {
@@ -359,7 +413,7 @@ goarch: amd64
 cpu: Intel`
 
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, osTxt, _, _ := parseData(scanner, 5)
+	regMap, _, _, osTxt, archTxt, cpuTxt := parseData(scanner, 5)
 
 	if len(regMap) != 0 {
 		t.Errorf("expected no regressions, got %v", regMap)
@@ -367,6 +421,14 @@ cpu: Intel`
 
 	if osTxt != "linux" {
 		t.Errorf("expected metadata extracted, got osTxt=%q", osTxt)
+	}
+
+	if archTxt != "amd64" {
+		t.Errorf("expected metadata extracted, got archTxt=%q", archTxt)
+	}
+
+	if cpuTxt != "Intel" {
+		t.Errorf("expected metadata extracted, got cpuTxt=%q", cpuTxt)
 	}
 }
 
@@ -382,9 +444,9 @@ BenchmarkC-8    100  100ns  125ns  +25.00%`
 
 	// Test with threshold 10
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, _, _, _ := parseData(scanner, 10) //nolint:dogsled // We only care about regressions here
+	regMap, _, _, _, _, _ := parseData(scanner, 10) //nolint:dogsled // We only care about regressions here
 
-	regressions := regMap["testpkg"]
+	regressions := regMap["testpkg"][unknownSection]
 	// Only +15% and +25% should be included (both > 10)
 	if len(regressions) != 2 {
 		t.Errorf("expected 2 regressions above 10%% threshold, got %d: %v", len(regressions), regressions)
@@ -418,14 +480,14 @@ pkg: testpkg
 BenchmarkNormal-8    100  100ns  150ns  +50.00%`
 
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, _, _, _ := parseData(scanner, 10) //nolint:dogsled // We only care about regressions here
+	regMap, _, _, _, _, _ := parseData(scanner, 10) //nolint:dogsled // We only care about regressions here
 
 	// Should have both empty string package and testpkg
 	if len(regMap) != 2 {
 		t.Errorf("expected 2 packages (empty and testpkg), got %d: %v", len(regMap), regMap)
 	}
 
-	orphan, hasOrphan := regMap["UNKNOWN"]
+	orphan, hasOrphan := regMap[unknownPackage]
 	if !hasOrphan || len(orphan) != 1 {
 		t.Errorf("expected orphan regression in empty package")
 	}
@@ -446,17 +508,17 @@ BenchmarkB-8    100  100ns  160ns  +60.00%
 BenchmarkC-8    100  100ns  170ns  +70.00%`
 
 	scanner := bufio.NewScanner(strings.NewReader(input))
-	regMap, _, _, _ := parseData(scanner, 10) //nolint:dogsled // We only care about regressions here
+	regMap, _, _, _, _, _ := parseData(scanner, 10) //nolint:dogsled // We only care about regressions here
 
-	regressions := regMap["multi"]
+	regressions := regMap["multi"][unknownSection]
 	if len(regressions) != 3 {
 		t.Errorf("expected 3 regressions, got %d: %v", len(regressions), regressions)
 	}
 
 	// All should be in same package
-	for i, reg := range regressions {
+	for idx, reg := range regressions {
 		if !strings.Contains(reg, "Benchmark") {
-			t.Errorf("regression %d should be formatted correctly: %q", i, reg)
+			t.Errorf("regression %d should be formatted correctly: %q", idx, reg)
 		}
 	}
 }
@@ -500,12 +562,18 @@ func Test_parseData_benchmarkName(t *testing.T) {
 func Test_processResults_withRegressions(t *testing.T) {
 	t.Parallel()
 
-	regMap := map[string][]string{
-		"package1": {"  Bench1 (10.00% slower)", "  Bench2 (15.00% slower)"},
-		"package2": {"  Bench3 (5.50% slower)"},
+	regMap := map[string]map[string][]string{
+		"package1": {
+			unknownSection: {" Bench1 (10.00% slower)", " Bench2 (15.00% slower)"},
+		},
+		"package2": {
+			unknownSection: {" Bench3 (5.50% slower)"},
+		},
 	}
+	pkgOrder := []string{"package1", "package2"}
+	sectionOrder := []string{unknownSection}
 
-	result := processResults(regMap, 5, "linux", "amd64", "Intel")
+	result := processResults(regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
 	if result != false {
 		t.Errorf("processResults with regressions should return false, got %v", result)
 	}
@@ -514,9 +582,11 @@ func Test_processResults_withRegressions(t *testing.T) {
 func Test_processResults_noRegressions(t *testing.T) {
 	t.Parallel()
 
-	regMap := map[string][]string{}
+	regMap := map[string]map[string][]string{}
+	pkgOrder := []string{}
+	sectionOrder := []string{}
 
-	result := processResults(regMap, 5, "linux", "amd64", "Intel")
+	result := processResults(regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
 	if result != true {
 		t.Errorf("processResults without regressions should return true, got %v", result)
 	}
@@ -526,11 +596,13 @@ func Test_processResults_emptyRegressionList(t *testing.T) {
 	t.Parallel()
 
 	// Map with empty lists should be treated as no regressions
-	regMap := map[string][]string{
+	regMap := map[string]map[string][]string{
 		"pkg1": {},
 	}
+	pkgOrder := []string{"pkg1"}
+	sectionOrder := []string{}
 
-	result := processResults(regMap, 5, "linux", "amd64", "Intel")
+	result := processResults(regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
 	// Since regMap length > 0, this should return false
 	if result != false {
 		t.Errorf("processResults with non-empty map should return false, got %v", result)
