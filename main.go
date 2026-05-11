@@ -16,8 +16,9 @@ const (
 	cpuPrefix      = "cpu: "
 	sectionKeyword = " vs base "
 
-	unknownPackage = "Unknown section"
-	unknownSection = "Unknown package"
+	unknownPackage  = "Unknown section"
+	unknownSection  = "Unknown package"
+	unknownMetadata = "Unknown"
 )
 
 // Match lines like: "BenchmarkAbc-42  230ns  123ns  +90.00%".
@@ -45,12 +46,13 @@ func parseData(scanner *bufio.Scanner, threshold float64) (
 	currentSection := unknownSection
 
 	var (
-		osTxt        string
-		archTxt      string
-		cpuTxt       string
 		pkgOrder     []string
 		sectionOrder []string
 	)
+
+	osTxt := unknownMetadata
+	archTxt := unknownMetadata
+	cpuTxt := unknownMetadata
 
 	sectionMap := map[string]struct{}{}
 
@@ -100,15 +102,15 @@ func detectNonBenchLine(
 		}
 
 		*currentSection = unknownSection // Reset
-	case *osTxt == "" && strings.HasPrefix(line, osPrefix):
+	case *osTxt == unknownMetadata && strings.HasPrefix(line, osPrefix):
 		*osTxt = strings.TrimSpace(strings.TrimPrefix(line, osPrefix))
 
 		return true
-	case *archTxt == "" && strings.HasPrefix(line, archPrefix):
+	case *archTxt == unknownMetadata && strings.HasPrefix(line, archPrefix):
 		*archTxt = strings.TrimSpace(strings.TrimPrefix(line, archPrefix))
 
 		return true
-	case *cpuTxt == "" && strings.HasPrefix(line, cpuPrefix):
+	case *cpuTxt == unknownMetadata && strings.HasPrefix(line, cpuPrefix):
 		*cpuTxt = strings.TrimSpace(strings.TrimPrefix(line, cpuPrefix))
 
 		return true

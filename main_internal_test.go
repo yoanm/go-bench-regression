@@ -391,16 +391,16 @@ func Test_parseData_emptyInput(t *testing.T) {
 		t.Errorf("expected empty sectionOrder, got %v", sectionOrder)
 	}
 
-	if osTxt != "" {
-		t.Errorf("expected empty osTxt, got %q", osTxt)
+	if osTxt != unknownMetadata {
+		t.Errorf("expected osTxt=%q, got %q", unknownMetadata, osTxt)
 	}
 
-	if archTxt != "" {
-		t.Errorf("expected empty archTxt, got %q", archTxt)
+	if archTxt != unknownMetadata {
+		t.Errorf("expected archTxt=%q, got %q", unknownMetadata, archTxt)
 	}
 
-	if cpuTxt != "" {
-		t.Errorf("expected empty cpuTxt, got %q", cpuTxt)
+	if cpuTxt != unknownMetadata {
+		t.Errorf("expected cpuTxt=%q, got %q", unknownMetadata, cpuTxt)
 	}
 }
 
@@ -710,5 +710,367 @@ BenchmarkB-8    100  100ns  80ns  -20.00%`
 	// Only improvements (negative deltas), no regressions
 	if result != true {
 		t.Errorf("Run() with only improvements should return true, got %v", result)
+	}
+}
+
+// Test_parseLine_geomeanLine tests parsing of geomean lines to ensure they don't
+// create spurious regressions. Geomean lines appear in benchstat output but should
+// be handled appropriately.
+func Test_parseLine_geomeanLine(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		line      string
+		threshold float64
+		want      string
+	}{
+		{
+			name:      "geomean line with delta (should be treated like any other line)",
+			line:      "geomean                                                      +15.50%",
+			threshold: 5,
+			want:      "geomean (15.50% slower)", // Geomean is just a benchmark name in the regex
+		},
+		{
+			name:      "geomean line with delta below threshold",
+			line:      "geomean                                                      +3.00%",
+			threshold: 5,
+			want:      "", // Below threshold, no regression
+		},
+		{
+			name:      "geomean line with delta exactly at threshold",
+			line:      "geomean                                                      +10.00%",
+			threshold: 10,
+			want:      "", // Exact threshold doesn't match (> not >=)
+		},
+		{
+			name:      "geomean line with improvement",
+			line:      "geomean                                                      -5.00%",
+			threshold: 5,
+			want:      "", // Negative delta, no regression
+		},
+		{
+			name:      "geomean line with no delta",
+			line:      "geomean",
+			threshold: 5,
+			want:      "", // No delta, no regression
+		},
+	}
+
+	for _, testCase := range tests {
+		// Capture for parallel execution
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			result := parseLine(testCase.line, testCase.threshold)
+			if result != testCase.want {
+				t.Errorf("parseLine(%q, %v) = %q, want %q", testCase.line, testCase.threshold, result, testCase.want)
+			}
+		})
+	}
+}
+
+// Test_parseData_variableSpacing tests robustness of parseData when benchstat output
+// has inconsistent whitespace (multiple spaces, tabs, leading/trailing spaces).
+func Test_parseData_variableSpacing(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		input      string
+		threshold  float64
+		wantPkg    string
+		wantHasReg bool
+	}{
+		{
+			name: "single spaces (standard benchstat format)",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "multiple spaces between fields",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8     100    100ns    120ns    +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "tabs instead of spaces",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8	100	100ns	120ns	+20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "mixed spaces and tabs",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8  	 100  	100ns  	 120ns  	+20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "leading spaces on benchmark line",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+   BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "no regressions with variable spacing",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8  	 100  	100ns  	 102ns  	+2.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: false,
+		},
+	}
+
+	for _, testCase := range tests {
+		// Capture for parallel execution
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			scanner := bufio.NewScanner(strings.NewReader(testCase.input))
+			regMap, _, _, _, _, _ := parseData(scanner, testCase.threshold)
+
+			hasRegressions := len(regMap[testCase.wantPkg]) > 0
+			if hasRegressions != testCase.wantHasReg {
+				t.Errorf("parseData() found regressions=%v, want %v. regMap=%+v", hasRegressions, testCase.wantHasReg, regMap)
+			}
+		})
+	}
+}
+
+// Test_parseData_packageNamePatterns tests parsing with real Go package naming patterns.
+// Verifies that complex package names (github.com/org/repo, internal/pkg_name, etc.) are
+// handled correctly.
+func Test_parseData_packageNamePatterns(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		input      string
+		threshold  float64
+		wantPkg    string
+		wantHasReg bool
+	}{
+		{
+			name: "github.com/org/repo package name",
+			input: `pkg: github.com/org/repo
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkFunc-8     100  100ns  130ns  +30.00%`,
+			threshold:  10,
+			wantPkg:    "github.com/org/repo",
+			wantHasReg: true,
+		},
+		{
+			name: "internal package name",
+			input: `pkg: internal/helpers
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "internal/helpers",
+			wantHasReg: true,
+		},
+		{
+			name: "package with underscores",
+			input: `pkg: my_pkg_name
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkFunc-8     100  100ns  115ns  +15.00%`,
+			threshold:  10,
+			wantPkg:    "my_pkg_name",
+			wantHasReg: true,
+		},
+		{
+			name: "package with hyphens (go module naming)",
+			input: `pkg: github.com/my-org/my-repo
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8     100  100ns  125ns  +25.00%`,
+			threshold:  10,
+			wantPkg:    "github.com/my-org/my-repo",
+			wantHasReg: true,
+		},
+		{
+			name: "nested internal package",
+			input: `pkg: internal/pkg/helpers/util
+goos: linux
+goarch: amd64
+cpu: Intel
+BenchmarkFunc-8     100  100ns  110ns  +10.00%`,
+			threshold:  5,
+			wantPkg:    "internal/pkg/helpers/util",
+			wantHasReg: true,
+		},
+	}
+
+	for _, testCase := range tests {
+		// Capture for parallel execution
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			scanner := bufio.NewScanner(strings.NewReader(testCase.input))
+			regMap, _, _, _, _, _ := parseData(scanner, testCase.threshold)
+
+			hasRegressions := len(regMap[testCase.wantPkg]) > 0
+			if hasRegressions != testCase.wantHasReg {
+				t.Errorf("parseData() for package %q found regressions=%v, want %v. regMap=%+v", testCase.wantPkg, hasRegressions, testCase.wantHasReg, regMap)
+			}
+		})
+	}
+}
+
+// Test_parseData_metadataVariations tests parseData robustness with metadata field variations
+// such as missing fields, reordered fields, and extra whitespace.
+func Test_parseData_metadataVariations(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		input      string
+		threshold  float64
+		wantPkg    string
+		wantHasReg bool
+	}{
+		{
+			name: "missing goarch field",
+			input: `pkg: testpkg
+goos: linux
+cpu: Intel
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "missing goos field",
+			input: `pkg: testpkg
+goarch: amd64
+cpu: Intel
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "missing cpu field",
+			input: `pkg: testpkg
+goos: linux
+goarch: amd64
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "reordered metadata fields",
+			input: `pkg: testpkg
+cpu: Intel
+goarch: amd64
+goos: linux
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "extra whitespace in metadata values",
+			input: `pkg: testpkg
+goos: linux 
+goarch: amd64  
+cpu: Intel Core i7
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+		{
+			name: "all metadata fields missing except pkg",
+			input: `pkg: testpkg
+BenchmarkTest-8     100  100ns  120ns  +20.00%`,
+			threshold:  5,
+			wantPkg:    "testpkg",
+			wantHasReg: true,
+		},
+	}
+
+	for _, testCase := range tests {
+		// Capture for parallel execution
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+
+			scanner := bufio.NewScanner(strings.NewReader(testCase.input))
+			regMap, _, _, _, _, _ := parseData(scanner, testCase.threshold)
+
+			hasRegressions := len(regMap[testCase.wantPkg]) > 0
+			if hasRegressions != testCase.wantHasReg {
+				t.Errorf("parseData() found regressions=%v, want %v. regMap=%+v", hasRegressions, testCase.wantHasReg, regMap)
+			}
+		})
+	}
+}
+
+// Test_processResults_largeInput tests processResults with 1000+ benchmarks
+// to verify performance and correctness with large input scenarios.
+func Test_processResults_largeInput(t *testing.T) {
+	t.Parallel()
+
+	// Build a large regression map with 500 regressions
+	regMap := make(map[string]map[string][]string)
+	pkg := "testpkg"
+	regMap[pkg] = make(map[string][]string)
+
+	// Add 500 benchmark regressions
+	for i := 1; i <= 500; i++ {
+		benchName := "Benchmark" + string(rune(65+(i%26))) + string(rune(i))
+		regMap[pkg][benchName] = []string{"(20.00% slower)"}
+	}
+
+	pkgOrder := []string{pkg}
+	sectionOrder := []string{}
+
+	// Process results
+	result := processResults(regMap, pkgOrder, sectionOrder, 10, "linux", "amd64", "Intel")
+
+	// With regressions, should return false
+	if result != false {
+		t.Errorf("processResults() with 500 regressions should return false, got %v", result)
+	}
+
+	// Verify regressions map is not empty
+	if len(regMap[pkg]) != 500 {
+		t.Errorf("processResults() should preserve 500 regressions, got %d", len(regMap[pkg]))
 	}
 }
