@@ -64,12 +64,11 @@ benchreg "github.com/yoanm/go-bench-regression"
 )
 
 func main() {
-scanner := bufio.NewScanner(os.Stdin)
-success := benchreg.Run(scanner, 10.0) // 10% threshold
-
-if !success {
-os.Exit(1) // Regressions detected
-}
+    scanner := bufio.NewScanner(os.Stdin) // or bufio.NewScanner(bytes.NewReader(inputBytes))
+    
+    if !benchreg.Run(scanner, 10.0) { // 10% threshold
+        os.Exit(1) // Regressions detected
+    }
 }
 ```
 
@@ -106,11 +105,10 @@ benchstat baseline.txt after.txt | bench-reg 10
 
 ```yaml
 - name: Run Benchmarks
-  run: go test -bench=. ./... > benchstat_new.txt
+  run: go test -run='^$' -bench=. -benchmem ./... > after.txt
 
 - name: Compare with Baseline
-  run: |
-    benchstat benchstat_baseline.txt benchstat_new.txt | bench-reg 10
+  run: benchstat baseline.txt after.txt | bench-reg 10
 ```
 
 ## Threshold Guidelines
@@ -127,16 +125,16 @@ benchstat baseline.txt after.txt | bench-reg 10
 The tool expects benchstat output format:
 
 ```
-pkg: github.com/yoanm/go-bench-regression
+pkg: github.com/user/mypackage
 goos: linux
 goarch: amd64
 cpu: Intel(R) Core(TM) i7-8700K CPU @ 3.70GHz
-                │ previous.txt │          current.txt               │
-                │     B/op     │     B/op      vs base              │
+                │ baseline.txt │          after.txt                  │
+                │     B/op     │     B/op      vs base               │
 BenchmarkFunc-4   2.269Mi ± 0%   2.270Mi ± 0%  +12.39% (p=0.128 n=7)
 
-                │ previous.txt │         current.txt               │
-                │  allocs/op   │  allocs/op   vs base              │
+                │ baseline.txt │         after.txt                  │
+                │  allocs/op   │  allocs/op   vs base               │
 BenchmarkFunc-4    23.20k ± 0%   23.20k ± 0%  +11.75% (p=1.000 n=7)
 ```
 
@@ -152,13 +150,13 @@ The tool:
 When regressions are detected:
 
 ```
-2026/05/11 19:34:53 ERROR Performance regression detected (threshold: 10.0%):
-2026/05/11 19:34:53 ERROR Os "linux" / Arch "amd64" / CPU "Intel(R) Core(TM)"
-2026/05/11 19:34:53 ERROR Package: github.com/mypackage
-2026/05/11 19:34:53 ERROR   B/op
-2026/05/11 19:34:53 ERROR     - BenchmarkFunc (12.39% slower)
-2026/05/11 19:34:53 ERROR   allocs/op
-2026/05/11 19:34:53 ERROR     - BenchmarkFunc (11.75% slower)
+ERROR Performance regression detected (threshold: 10.0%):
+ERROR Os "linux" / Arch "amd64" / CPU "Intel(R) Core(TM)"
+ERROR Package: github.com/user/mypackage
+ERROR   B/op
+ERROR     - BenchmarkFunc (12.39% slower)
+ERROR   allocs/op
+ERROR     - BenchmarkFunc (11.75% slower)
 ```
 
 ## Development
