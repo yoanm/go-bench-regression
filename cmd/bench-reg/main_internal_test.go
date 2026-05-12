@@ -11,8 +11,8 @@ import (
 func TestCLI_noArguments(t *testing.T) {
 	log.SetOutput(os.NewFile(0, os.DevNull)) // Avoid logs output mixed with test output
 
-	if exitCode := execute(); exitCode != 1 {
-		t.Errorf("expected exit code 1, got %d", exitCode)
+	if exitCode := execute(); exitCode != 2 {
+		t.Errorf("expected exit code 2, got %d", exitCode)
 	}
 }
 
@@ -33,14 +33,14 @@ func TestCLI_invalidThresholdFormat(t *testing.T) {
 			closeFn := setupTest(t, args, "")
 			defer closeFn()
 
-			if exitCode := execute(); exitCode != 2 {
-				t.Errorf("threshold %q: expected exit code 2, got %d", testCase.threshold, exitCode)
+			if exitCode := execute(); exitCode != 3 {
+				t.Errorf("threshold %q: expected exit code 3, got %d", testCase.threshold, exitCode)
 			}
 		})
 	}
 }
 
-// TestCLI_outOfRangeThreshold tests thresholds outside valid range (1-99).
+// TestCLI_outOfRangeThreshold tests thresholds outside valid range (>0).
 func TestCLI_outOfRangeThreshold(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -48,8 +48,6 @@ func TestCLI_outOfRangeThreshold(t *testing.T) {
 	}{
 		{"zero", "0"},
 		{"negative", "-10"},
-		{"100 exactly", "100"},
-		{"above 100", "101"},
 	}
 
 	for _, testCase := range tests {
@@ -59,8 +57,8 @@ func TestCLI_outOfRangeThreshold(t *testing.T) {
 			closeFn := setupTest(t, args, "")
 			defer closeFn()
 
-			if exitCode := execute(); exitCode != 2 {
-				t.Errorf("threshold %s: expected exit code 2, got %d", testCase.threshold, exitCode)
+			if exitCode := execute(); exitCode != 3 {
+				t.Errorf("threshold %s: expected exit code 3, got %d", testCase.threshold, exitCode)
 			}
 		})
 	}
@@ -68,7 +66,7 @@ func TestCLI_outOfRangeThreshold(t *testing.T) {
 
 // TestCLI_validThresholds tests valid threshold values.
 func TestCLI_validThresholds(t *testing.T) {
-	tests := []string{"1", "50.5", "99"}
+	tests := []string{"1", "50.5", "99", "100", "0.23", "200"}
 
 	for _, threshold := range tests {
 		t.Run("threshold_"+threshold, func(t *testing.T) {
@@ -79,8 +77,8 @@ func TestCLI_validThresholds(t *testing.T) {
 			os.Args = []string{"fake-cmd-name", threshold}
 
 			// Exit code should be 3 (no input from terminal), not 1 or 2 (arg errors)
-			if exitCode := execute(); exitCode != 3 {
-				t.Errorf("threshold %s: expected exit code 3 (no input), got %d", threshold, exitCode)
+			if exitCode := execute(); exitCode != 4 {
+				t.Errorf("threshold %s: expected exit code 4 (no input), got %d", threshold, exitCode)
 			}
 		})
 	}
@@ -130,8 +128,8 @@ BenchmarkB-8    100  100ns  110ns  +10.00%`
 	closeFn := setupTest(t, args, input)
 	defer closeFn()
 
-	if code := execute(); code != 4 {
-		t.Errorf("expected exit code 4 (regressions found), got %d", code)
+	if code := execute(); code != 1 {
+		t.Errorf("expected exit code 1 (regressions found), got %d", code)
 	}
 }
 
@@ -152,8 +150,8 @@ BenchmarkDecode-8            1500  300ns ± 0%   250ns ± 1%   -16.67%`
 	closeFn := setupTest(t, args, input)
 	defer closeFn()
 
-	if code := execute(); code != 4 {
-		t.Errorf("expected exit code 4, got %d", code)
+	if code := execute(); code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
 	}
 }
 
@@ -201,8 +199,8 @@ BenchmarkA-8    100  100ns  110.1ns  +10.10%`
 
 	defer closeFn()
 
-	if code := execute(); code != 4 {
-		t.Errorf("expected exit code 4, got %d", code)
+	if code := execute(); code != 1 {
+		t.Errorf("expected exit code 1, got %d", code)
 	}
 }
 

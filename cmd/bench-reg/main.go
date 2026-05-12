@@ -16,10 +16,10 @@ func main() {
 }
 
 const (
-	missingArgsExitCode        = 1
-	invalidThresholdExitCode   = 2
-	missingInputExitCode       = 3
-	regressionDetectedExitCode = 4
+	regressionDetectedExitCode = 1
+	missingArgsExitCode        = 2
+	invalidThresholdExitCode   = 3
+	missingInputExitCode       = 4
 )
 
 func execute() int {
@@ -37,8 +37,8 @@ func execute() int {
 		slog.Error("Threshold must be a valid float")
 
 		return invalidThresholdExitCode
-	} else if threshold >= 100 || threshold <= 0 {
-		slog.Error("Threshold must be greater than 0% and lower than 100%")
+	} else if threshold <= 0 {
+		slog.Error("Threshold must be greater than 0%")
 
 		return invalidThresholdExitCode
 	}

@@ -1,3 +1,14 @@
+// Package benchreg analyzes benchstat output and detects performance regressions
+// above a specified threshold. It parses benchstat command output, extracts regression
+// percentages from benchmark results, and reports those exceeding the threshold.
+//
+// Usage:
+//
+//	scanner := bufio.NewScanner(os.Stdin)
+//	success := benchreg.Run(scanner, 10.0) // 10% threshold
+//	if !success {
+//		fmt.Println("Performance regressions detected")
+//	}
 package benchreg
 
 import (
@@ -21,12 +32,38 @@ const (
 	unknownMetadata = "Unknown"
 )
 
-// Match lines like: "BenchmarkAbc-42  230ns  123ns  +90.00%".
 var (
-	deltaRegex   = regexp.MustCompile(`([+-]\d+\.?\d*)%`)
+	// Match lines like: "BenchmarkAbc-42  230ns  123ns  +90.00%".
+	deltaRegex = regexp.MustCompile(`([+-]\d+\.?\d*)%`)
+	// Match lines like: "│  allocs/op   │  allocs/op   vs base │".
 	sectionRegex = regexp.MustCompile(`│\s+([^|\s]+)\s+vs base\s+│`)
 )
 
+// Run analyzes benchstat output from the provided scanner and detects performance
+// regressions exceeding the specified threshold percentage.
+//
+// It parses benchstat output to extract:
+//   - Package names and benchmark results
+//   - Regression percentages (positive deltas)
+//   - Metadata (operating system, architecture, CPU)
+//
+// Parameters:
+//   - scanner: reads benchstat output line by line
+//   - threshold: percentage threshold; regressions above this value are reported
+//
+// Returns:
+//   - true if no regressions are detected (all deltas at or below threshold)
+//   - false if regressions are detected and logged
+//
+// Example output format:
+//
+//	pkg: mypackage
+//	goos: linux
+//	goarch: amd64
+//	cpu: Intel(R) Core(TM)
+//	BenchmarkFunc-8    100  100ns  120ns  +20.00%
+//
+// With threshold 10%, the above example would trigger a regression report for the 20% delta.
 func Run(scanner *bufio.Scanner, threshold float64) bool {
 	regMap, pkgOrder, sectionOrder, osTxt, archTxt, cpuTxt := parseData(scanner, threshold)
 
@@ -34,16 +71,16 @@ func Run(scanner *bufio.Scanner, threshold float64) bool {
 }
 
 func parseData(scanner *bufio.Scanner, threshold float64) (
-	map[string]map[string][]string,
-	[]string,
-	[]string,
-	string,
-	string,
-	string,
+	map[string]map[string][]string, // Regressions list by packages and sections
+	[]string, // Packages order (as read from the input)
+	[]string, // Sections order (as read from the input)
+	string, // os label
+	string, // arch label
+	string, // cpu label
 ) {
-	regMap := map[string]map[string][]string{} // Regressions list by packages
-	currentPkg := unknownPackage               // Default value in case of no package header !
-	currentSection := unknownSection
+	regMap := map[string]map[string][]string{}
+	currentPkg := unknownPackage     // Default value in case of no package header !
+	currentSection := unknownSection // Default value in case of no section header !
 
 	var (
 		pkgOrder     []string

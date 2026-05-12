@@ -9,7 +9,7 @@ This file provides context for AI assistants working in this Go library project.
 
 ## Project Overview
 
-**go-bench-regression** is a Go CLI (module: `summary`) for comparing output of benchstat command and detected regression above a provided threshold. It is designed to help developers identify performance regressions in their Go code by analyzing benchmark results.
+**go-bench-regression** is a Go CLI (module: `summary`) for comparing output of benchstat command and detect regressions above a provided threshold. It is designed to help developers identify performance regressions in their Go code by analyzing benchmark results.
 
 ## Build, Test, and Lint
 
