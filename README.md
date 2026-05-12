@@ -72,10 +72,10 @@ cat benchstat_output.txt | bench-reg 5
 package main
 
 import (
-"bufio"
-"os"
+    "bufio"
+    "os"
 
-benchreg "github.com/yoanm/go-bench-regression"
+    benchreg "github.com/yoanm/go-bench-regression"
 )
 
 func main() {
