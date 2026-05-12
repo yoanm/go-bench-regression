@@ -1,0 +1,15 @@
+goos: linux
+goarch: amd64
+pkg: github.com/yoanm/go-deps-diff-summary
+cpu: AMD EPYC 7763 64-Core Processor
+                     │ previous.txt │          current.txt          │
+                     │    sec/op    │    sec/op     vs base         │
+GenerateForChanges-4   163.9µ ± 21%   162.4µ ± 60%  ~ (p=0.902 n=7)
+
+                     │ previous.txt │            current.txt             │
+                     │     B/op     │     B/op      vs base              │
+GenerateForChanges-4   246.9Ki ± 0%   247.8Ki ± 0%  +0.35% (p=0.001 n=7)
+
+                     │ previous.txt │            current.txt            │
+                     │  allocs/op   │  allocs/op   vs base              │
+GenerateForChanges-4    1.636k ± 0%   1.640k ± 0%  +0.24% (p=0.001 n=7)
