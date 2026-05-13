@@ -40,7 +40,7 @@ jobs:
           cache-dependency-path: ./go.sum
 
       - name: Run benchmarks
-        run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/current.txt
+          run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/current.txt
 
   benchmark-original:
     name: Original
@@ -61,7 +61,7 @@ jobs:
           cache-dependency-path: ./go.sum
 
       - name: Run benchmarks
-        run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/previous.txt
+          run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/previous.txt
 
   regression-check:
     name: Regression Check
