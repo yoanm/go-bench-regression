@@ -19,8 +19,8 @@ defaults:
     shell: bash # Mandatory to take advantage of "-o pipefail" and stop execution at first error even with "cmd | tee ..."
 
 jobs:
-  benchmark:
-    name: Regression check
+  benchmark-current:
+    name: Current
     if: github.event_name == 'push' || ( github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'with-benchmark') )
     runs-on: ubuntu-latest
     steps:
@@ -39,24 +39,55 @@ jobs:
           cache: true
           cache-dependency-path: ./go.sum
 
-      - name: Install benchstat & bench-reg tools
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: |
-          go install golang.org/x/perf/cmd/benchstat@latest
-          # Generate the bench-reg binay based on current code
-          # For external use, rely on "go install github.com/yoanm/go-bench-regression/cmd/bench-reg@latest" instead
-          go install ./cmd/bench-reg
+      - name: Run benchmarks
+          run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/current.txt
 
-      - name: Run benchmarks on current code
-        run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/current.txt
-
+  benchmark-original:
+    name: Original
+    if: github.event_name == 'push' || ( github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'with-benchmark') )
+    runs-on: ubuntu-latest
+    steps:
       - name: Checkout original code
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.pull_request.base.sha || github.event.before }}
 
-      - name: Run benchmarks on original code
-        run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/previous.txt
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: ./go.sum
+
+      - name: Run benchmarks
+          run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/previous.txt
+
+  regression-check:
+    name: Regression Check
+    if: github.event_name == 'push' || ( github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'with-benchmark') )
+    runs-on: ubuntu-latest
+    needs: [benchmark-current, benchmark-original]
+    steps:
+      - name: Checkout current code
+        # Useful only for this repository in order to rely on current code !
+        # Otherwise, current and original benchmarks being files, there is no need to retrieve the repository code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: ./go.mod
+          check-latest: true
+          cache: true
+          cache-dependency-path: ./go.sum
+
+      - name: Install bench-reg tools
+        run: |
+          go install golang.org/x/perf/cmd/benchstat@latest
+          # Generate the bench-reg binay based on current code
+          # For external use, rely on "go install github.com/yoanm/go-bench-regression/cmd/bench-reg@latest" instead
+          go install ./cmd/bench-reg
 
       - name: Compare benchmarks
         run: benchstat Previous=${{ runner.temp }}/previous.txt Current=${{ runner.temp }}/current.txt | tee ${{ runner.temp }}/benchstat.txt
