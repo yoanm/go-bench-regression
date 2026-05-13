@@ -179,7 +179,7 @@ func parseLine(line string, threshold float64) string {
 
 		// Positive delta means regression (slower)
 		if delta > threshold {
-			return fmt.Sprintf("%s — %.2f%% slower", strings.Fields(line)[0], delta)
+			return fmt.Sprintf("%s — %.2f%% slower", strings.TrimSpace(strings.Fields(line)[0]), delta)
 		}
 	}
 
