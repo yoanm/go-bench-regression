@@ -43,7 +43,9 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           go install golang.org/x/perf/cmd/benchstat@latest
-          go install github.com/yoanm/go-bench-regression/cmd/bench-reg@v0.1.1-0.20260513123315-45d2e6576413
+          # Generate the bench-reg binay based on current code
+          # For external use, rely on "go install github.com/yoanm/go-bench-regression/cmd/bench-reg@latest" instead
+          go install ./cmd/bench-reg
 
       - name: Run benchmarks on current code
         run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/current.txt
