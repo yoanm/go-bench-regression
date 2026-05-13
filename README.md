@@ -126,6 +126,8 @@ benchstat baseline.txt after.txt | bench-reg 10
   run: benchstat baseline.txt after.txt | bench-reg 10
 ```
 
+You can also take a look at [CI-benchmark.yml](./.github/workflows/CI-benchmark.yml) for a deeper integration
+
 ## Threshold Guidelines
 
 - **1-5%**: Strict threshold for performance-critical code
