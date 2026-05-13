@@ -579,6 +579,7 @@ func Test_printRegressions(t *testing.T) {
 
 	expected := `❌  Performance regression detected — threshold: 5.0%
 🕵️Os "linux" — Arch "amd64" — CPU "Intel"
+
 🗄️Package: package1
    🔎 Unknown section
       📈  Bench1 — 10.00% slower
