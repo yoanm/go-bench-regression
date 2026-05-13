@@ -3,9 +3,10 @@ package benchreg_test
 import (
 	"bufio"
 	"bytes"
-	benchreg "github.com/yoanm/go-bench-regression"
 	"strings"
 	"testing"
+
+	benchreg "github.com/yoanm/go-bench-regression"
 )
 
 func BenchmarkRun(b *testing.B) {
@@ -20,7 +21,7 @@ BenchmarkFunc3-8     1000  300ns  290ns  -3.33%`
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for range b.N {
 		scanner := bufio.NewScanner(strings.NewReader(input))
 		output := &bytes.Buffer{}
 		benchreg.Run(scanner, 10.0, output)
