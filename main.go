@@ -14,6 +14,7 @@ package benchreg
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log/slog"
 	"regexp"
 	"strconv"
@@ -27,8 +28,8 @@ const (
 	cpuPrefix      = "cpu: "
 	sectionKeyword = " vs base "
 
-	unknownPackage  = "Unknown section"
-	unknownSection  = "Unknown package"
+	unknownPackage  = "Unknown"
+	unknownSection  = "Unknown section"
 	unknownMetadata = "Unknown"
 )
 
@@ -50,6 +51,7 @@ var (
 // Parameters:
 //   - scanner: reads benchstat output line by line
 //   - threshold: percentage threshold; regressions above this value are reported
+//   - output: writer for the summary
 //
 // Returns:
 //   - true if no regressions are detected (all deltas at or below threshold)
@@ -64,13 +66,23 @@ var (
 //	BenchmarkFunc-8    100  100ns  120ns  +20.00%
 //
 // With threshold 10%, the above example would trigger a regression report for the 20% delta.
-func Run(scanner *bufio.Scanner, threshold float64) bool {
-	regMap, pkgOrder, sectionOrder, osTxt, archTxt, cpuTxt := parseData(scanner, threshold)
+func Run(input *bufio.Scanner, threshold float64, output io.StringWriter) bool {
+	regMap, pkgOrder, sectionOrder, osTxt, archTxt, cpuTxt := parseData(input, threshold)
 
-	return processResults(regMap, pkgOrder, sectionOrder, threshold, osTxt, archTxt, cpuTxt)
+	if len(regMap) > 0 {
+		printRegressions(output, regMap, pkgOrder, sectionOrder, threshold, osTxt, archTxt, cpuTxt)
+
+		return false
+	}
+
+	if _, err := output.WriteString("🎉 All good\n"); err != nil {
+		slog.Error("Error writing the output: " + err.Error())
+	}
+
+	return true
 }
 
-func parseData(scanner *bufio.Scanner, threshold float64) (
+func parseData(input *bufio.Scanner, threshold float64) (
 	map[string]map[string][]string, // Regressions list by packages and sections
 	[]string, // Packages order (as read from the input)
 	[]string, // Sections order (as read from the input)
@@ -93,8 +105,8 @@ func parseData(scanner *bufio.Scanner, threshold float64) (
 
 	sectionMap := map[string]struct{}{}
 
-	for scanner.Scan() {
-		line := scanner.Text()
+	for input.Scan() {
+		line := input.Text()
 		// Check if lines are related to package, section, os, arch or cpu info
 		if detectNonBenchLine(line, &currentPkg, &currentSection, &osTxt, &archTxt, &cpuTxt) {
 			continue // No need to parse the line further, we have what we want
@@ -167,14 +179,15 @@ func parseLine(line string, threshold float64) string {
 
 		// Positive delta means regression (slower)
 		if delta > threshold {
-			return fmt.Sprintf("%s (%.2f%% slower)", strings.Fields(line)[0], delta)
+			return fmt.Sprintf("%s — %.2f%% slower", strings.Fields(line)[0], delta)
 		}
 	}
 
 	return ""
 }
 
-func processResults(
+func printRegressions(
+	output io.StringWriter,
 	regMap map[string]map[string][]string,
 	pkgOrder []string,
 	sectionOrder []string,
@@ -182,29 +195,26 @@ func processResults(
 	osTxt string,
 	archTxt string,
 	cpuTxt string,
-) bool {
-	if len(regMap) > 0 {
-		slog.Error(fmt.Sprintf("Performance regression detected (threshold: %.1f%%):\n", threshold))
-		slog.Error(fmt.Sprintf("Os %q / Arch %q / CPU %q", osTxt, archTxt, cpuTxt))
+) {
+	txt := strings.Builder{}
+	fmt.Fprintf(&txt, "❌  Performance regression detected — threshold: %.1f%%\n", threshold)
+	fmt.Fprintf(&txt, "🕵️Os %q — Arch %q — CPU %q\n", osTxt, archTxt, cpuTxt)
 
-		// Sort packages and section in order to have a deterministic output (way easier for tests)
-		inOrderMapIteratorHelper(regMap, pkgOrder, func(pkg string, subBegMap map[string][]string) {
-			slog.Error("Package: " + pkg)
-			inOrderMapIteratorHelper(subBegMap, sectionOrder, func(section string, regList []string) {
-				slog.Error("  " + section)
+	// Sort packages and section in order to have a deterministic output (way easier for tests)
+	inOrderMapIteratorHelper(regMap, pkgOrder, func(pkg string, subBegMap map[string][]string) {
+		txt.WriteString("🗄️Package: " + pkg + "\n")
+		inOrderMapIteratorHelper(subBegMap, sectionOrder, func(section string, regList []string) {
+			txt.WriteString("   ➖  " + section + "\n")
 
-				for _, reg := range regList {
-					slog.Error("    " + reg)
-				}
-			})
+			for _, reg := range regList {
+				txt.WriteString("      📈 " + reg + "\n")
+			}
 		})
+	})
 
-		return false
+	if _, err := output.WriteString(txt.String()); err != nil {
+		slog.Error("Error writing the output: " + err.Error())
 	}
-
-	slog.Info("All good 🎉.")
-
-	return true
 }
 
 func inOrderMapIteratorHelper[K comparable, V any](theMap map[K]V, orderList []K, processor func(key K, val V)) {

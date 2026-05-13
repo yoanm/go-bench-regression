@@ -165,8 +165,8 @@ The tool:
 When regressions are detected:
 
 ```
-ERROR Performance regression detected (threshold: 10.0%):
-ERROR Os "linux" / Arch "amd64" / CPU "Intel(R) Core(TM)"
+❌ Performance regression detected (threshold: 10.0%):
+ℹ️ Os "linux" / Arch "amd64" / CPU "Intel(R) Core(TM)"
 ERROR Package: github.com/user/mypackage
 ERROR   B/op
 ERROR     - BenchmarkFunc (12.39% slower)

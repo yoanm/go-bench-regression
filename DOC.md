@@ -16,9 +16,9 @@ if !success {
 
 ## Functions
 
-### func [Run](/main.go#L67)
+### func [Run](/main.go#L69)
 
-`func Run(scanner *bufio.Scanner, threshold float64) bool`
+`func Run(input *bufio.Scanner, threshold float64, output io.StringWriter) bool`
 
 Run analyzes benchstat output from the provided scanner and detects performance
 regressions exceeding the specified threshold percentage.
@@ -36,6 +36,7 @@ Parameters:
 ```diff
 - scanner: reads benchstat output line by line
 - threshold: percentage threshold; regressions above this value are reported
+- output: writer for the summary
 ```
 
 Returns:
