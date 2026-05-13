@@ -244,7 +244,7 @@ func setupCLITest(t *testing.T, args []string, input *string) func() {
 			t.Fatalf("writing to fake stdin: %v", err)
 		}
 
-		stdinWriter.Close() // Close it else program run forever waiting for new data
+		stdinWriter.Close() // Close it, else program runs forever waiting for new data
 	}
 
 	return func() {

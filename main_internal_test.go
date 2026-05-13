@@ -3,7 +3,7 @@ package benchreg
 import (
 	"bufio"
 	"bytes"
-	"os"
+	"io"
 	"slices"
 	"strings"
 	"testing"
@@ -577,131 +577,26 @@ func Test_printRegressions(t *testing.T) {
 	pkgOrder := []string{"package1", "package2"}
 	sectionOrder := []string{unknownSection}
 
-	output := &bytes.Buffer{}
-
 	expected := `❌  Performance regression detected — threshold: 5.0%
 🕵️Os "linux" — Arch "amd64" — CPU "Intel"
 🗄️Package: package1
-   ➖  Unknown section
+   🔎 Unknown section
       📈  Bench1 — 10.00% slower
       📈  Bench2 — 15.00% slower
 🗄️Package: package2
-   ➖  Unknown section
+   🔎 Unknown section
       📈  Bench3 — 5.50% slower
 `
 
-	printRegressions(output, regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
-	content := make([]byte, output.Len())
+	output := &bytes.Buffer{}
 
-	_, err := output.Read(content)
+	printRegressions(output, regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
+
+	content, err := io.ReadAll(output)
 	if err != nil {
 		t.Error("Unable to read from output writer: " + err.Error())
 	} else if string(content) != expected {
 		t.Errorf("Unexpected output, diff: %s", diff.LineDiff(expected, string(content)))
-	}
-}
-
-func Test_Run_noRegressions(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  105ns  +5.00%
-BenchmarkB-8    100  100ns  110ns  +10.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 15, os.NewFile(0, os.DevNull))
-
-	if result != true {
-		t.Errorf("Run() with all regressions below threshold should return true, got %v", result)
-	}
-}
-
-func Test_Run_detectsRegressions(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  150ns  +50.00%
-BenchmarkB-8    100  100ns  110ns  +10.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 20, os.NewFile(0, os.DevNull))
-
-	if result != false {
-		t.Errorf("Run() with regression above threshold should return false, got %v", result)
-	}
-}
-
-func Test_Run_emptyInput(t *testing.T) {
-	t.Parallel()
-
-	input := ""
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 5, os.NewFile(0, os.DevNull))
-
-	if result != true {
-		t.Errorf("Run() with empty input should return true, got %v", result)
-	}
-}
-
-func Test_Run_metadataOnly(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 5, os.NewFile(0, os.DevNull))
-
-	if result != true {
-		t.Errorf("Run() with metadata only should return true, got %v", result)
-	}
-}
-
-func Test_Run_multiplePackages(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: pkg1
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  120ns  +20.00%
-
-pkg: pkg2
-BenchmarkB-8    100  100ns  115ns  +15.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 10, os.NewFile(0, os.DevNull))
-
-	// Both have regressions above 10%, should return false
-	if result != false {
-		t.Errorf("Run() with multiple packages with regressions should return false, got %v", result)
-	}
-}
-
-func Test_Run_onlyImprovements(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  50ns  -50.00%
-BenchmarkB-8    100  100ns  80ns  -20.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 5, os.NewFile(0, os.DevNull))
-
-	// Only improvements (negative deltas), no regressions
-	if result != true {
-		t.Errorf("Run() with only improvements should return true, got %v", result)
 	}
 }
 
@@ -1019,7 +914,6 @@ BenchmarkTest-8     100  100ns  120ns  +20.00%`,
 	}
 
 	for _, testCase := range tests {
-		// Capture for parallel execution
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1033,38 +927,3 @@ BenchmarkTest-8     100  100ns  120ns  +20.00%`,
 		})
 	}
 }
-
-/*
-// Test_printRegressions_largeInput tests printRegressions with 1000+ benchmarks
-// to verify performance and correctness with large input scenarios.
-func Test_printRegressions_largeInput(t *testing.T) {
-	t.Parallel()
-
-	// Build a large regression map with 500 regressions
-	regMap := make(map[string]map[string][]string)
-	pkg := "testpkg"
-	regMap[pkg] = make(map[string][]string)
-
-	// Add 500 benchmark regressions
-	for i := 1; i <= 500; i++ {
-		benchName := "Benchmark" + string(rune(65+(i%26))) + string(rune(i))
-		regMap[pkg][benchName] = []string{" — 20.00% slower"}
-	}
-
-	pkgOrder := []string{pkg}
-	sectionOrder := []string{}
-
-	// Process results
-	result := printRegressions(os.NewFile(0, os.DevNull), regMap, pkgOrder, sectionOrder, 10, "linux", "amd64", "Intel")
-
-	// With regressions, should return false
-	if result != false {
-		t.Errorf("printRegressions() with 500 regressions should return false, got %v", result)
-	}
-
-	// Verify regressions map is not empty
-	if len(regMap[pkg]) != 500 {
-		t.Errorf("printRegressions() should preserve 500 regressions, got %d", len(regMap[pkg]))
-	}
-}
-*/

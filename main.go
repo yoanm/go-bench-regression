@@ -204,7 +204,7 @@ func printRegressions(
 	inOrderMapIteratorHelper(regMap, pkgOrder, func(pkg string, subBegMap map[string][]string) {
 		txt.WriteString("🗄️Package: " + pkg + "\n")
 		inOrderMapIteratorHelper(subBegMap, sectionOrder, func(section string, regList []string) {
-			txt.WriteString("   ➖  " + section + "\n")
+			txt.WriteString("   🔎 " + section + "\n")
 
 			for _, reg := range regList {
 				txt.WriteString("      📈 " + reg + "\n")

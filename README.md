@@ -167,11 +167,11 @@ When regressions are detected:
 ```
 ❌ Performance regression detected (threshold: 10.0%):
 ℹ️ Os "linux" / Arch "amd64" / CPU "Intel(R) Core(TM)"
-ERROR Package: github.com/user/mypackage
-ERROR   B/op
-ERROR     - BenchmarkFunc (12.39% slower)
-ERROR   allocs/op
-ERROR     - BenchmarkFunc (11.75% slower)
+🗄️Package: github.com/user/mypackage
+   🔎 B/op
+      📈 BenchmarkFunc (12.39% slower)
+   🔎 allocs/op
+      📈 BenchmarkFunc (11.75% slower)
 ```
 
 ## Development

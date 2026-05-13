@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -28,9 +29,9 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"❌  Performance regression detected — threshold: 10.0%",
 				"🕵️Os \"linux\" — Arch \"amd64\" — CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"🗄️Package: github.com/yoanm/go-deps-diff/summary",
-				"   ➖  sec/op",
+				"   🔎 sec/op",
 				"      📈 GenerateForChanges-4 — 12.39% slower",
-				"   ➖  allocs/op",
+				"   🔎 allocs/op",
 				"      📈 GenerateForChanges-4 — 11.75% slower",
 			},
 		},
@@ -43,7 +44,7 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"❌  Performance regression detected — threshold: 12.0%",
 				"🕵️Os \"linux\" — Arch \"amd64\" — CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"🗄️Package: github.com/yoanm/go-deps-diff/summary",
-				"   ➖  sec/op",
+				"   🔎 sec/op",
 				"      📈 GenerateForChanges-4 — 12.39% slower",
 			},
 		},
@@ -56,20 +57,20 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"❌  Performance regression detected — threshold: 10.0%",
 				"🕵️Os \"linux\" — Arch \"amd64\" — CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"🗄️Package: github.com/yoanm/go-deps-diff",
-				"   ➖  sec/op",
+				"   🔎 sec/op",
 				"      📈 Diff_ComposerDiff-4 — 38.10% slower",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 Diff_ComposerDiff-4 — 52.24% slower",
-				"   ➖  allocs/op",
+				"   🔎 allocs/op",
 				"      📈 Diff_ComposerDiff-4 — 36.77% slower",
 				"🗄️Package: github.com/yoanm/go-deps-diff/managers/composer",
-				"   ➖  sec/op",
+				"   🔎 sec/op",
 				"      📈 BuildMapFromBytes-4 — 42.58% slower",
 				"      📈 geomean — 11.93% slower",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 BuildMapFromBytes-4 — 61.47% slower",
 				"      📈 geomean — 17.32% slower",
-				"   ➖  allocs/op",
+				"   🔎 allocs/op",
 				"      📈 BuildMapFromBytes-4 — 43.80% slower",
 				"      📈 geomean — 12.87% slower",
 			},
@@ -84,10 +85,10 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"❌  Performance regression detected — threshold: 50.0%",
 				"🕵️Os \"linux\" — Arch \"amd64\" — CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"🗄️Package: github.com/yoanm/go-deps-diff",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 Diff_ComposerDiff-4 — 52.24% slower",
 				"🗄️Package: github.com/yoanm/go-deps-diff/managers/composer",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 BuildMapFromBytes-4 — 61.47% slower",
 			},
 		},
@@ -100,9 +101,9 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"❌  Performance regression detected — threshold: 0.1%",
 				"🕵️Os \"linux\" — Arch \"amd64\" — CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"🗄️Package: github.com/yoanm/go-deps-diff-summary",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 GenerateForChanges-4 — 0.35% slower",
-				"   ➖  allocs/op",
+				"   🔎 allocs/op",
 				"      📈 GenerateForChanges-4 — 0.24% slower",
 			},
 		},
@@ -124,14 +125,14 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				"❌  Performance regression detected — threshold: 20.0%",
 				"🕵️Os \"linux\" — Arch \"amd64\" — CPU \"AMD EPYC 7763 64-Core Processor\"",
 				"🗄️Package: github.com/yoanm/go-deps-diff",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 Diff_ComposerDiff-4 — 28.86% slower",
-				"   ➖  allocs/op",
+				"   🔎 allocs/op",
 				"      📈 Diff_ComposerDiff-4 — 34.91% slower",
 				"🗄️Package: github.com/yoanm/go-deps-diff/managers/composer",
-				"   ➖  B/op",
+				"   🔎 B/op",
 				"      📈 BuildMapFromBytes-4 — 28.32% slower",
-				"   ➖  allocs/op",
+				"   🔎 allocs/op",
 				"      📈 BuildMapFromBytes-4 — 23.88% slower",
 			},
 		},
@@ -147,8 +148,6 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 				return
 			}
 
-			// closeFn, stdOutReader, _ := setupTestStdOutErr(t)
-			// defer closeFn()
 			stdoutReader, stdoutWriter, err := os.Pipe()
 			if err != nil {
 				t.Fatalf("creating fake stdout: %v", err)
@@ -172,20 +171,19 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 	}
 }
 
-func validateOutput(t *testing.T, stdoutReader *os.File, expected []string) bool {
+func validateOutput(t *testing.T, stdoutReader *os.File, expected []string) {
 	t.Helper()
 
 	// Read output
-	out := make([]byte, 1024) // 1024 should be enough here !
-
-	outLen, err := stdoutReader.Read(out)
+	content, err := io.ReadAll(stdoutReader)
 	if err != nil {
 		t.Error(fmt.Errorf("reading stdout = %w", err))
 
-		return true
+		return
 	}
 
-	testScanner := bufio.NewScanner(bytes.NewReader(out[:outLen]))
+	// Check expectations line by line
+	testScanner := bufio.NewScanner(bytes.NewReader(content))
 
 	expOutKey := 0
 	for testScanner.Scan() {
@@ -203,8 +201,6 @@ func validateOutput(t *testing.T, stdoutReader *os.File, expected []string) bool
 			expOutKey,
 			expected[expOutKey],
 		)
-		t.Error("Actual output:\n" + string(out[:outLen]))
+		t.Error("Actual output:\n" + string(content))
 	}
-
-	return false
 }
