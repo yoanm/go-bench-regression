@@ -26,10 +26,10 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 			threshold:      10,
 			fixture:        "base_case-2_regressions_above_10perc.txt",
 			expectedResult: false,
-			expectedOutput: `❌  Performance regression detected — threshold: 10.0%
-🕵️Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
+			expectedOutput: `❌ Performance regression detected — threshold: 10.0%
+🕵 Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
 
-🗄️Package: github.com/yoanm/go-deps-diff/summary
+🗄 Package: github.com/yoanm/go-deps-diff/summary
    🔎 sec/op
       📈 GenerateForChanges-4 — 12.39% slower
    🔎 allocs/op
@@ -41,10 +41,10 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 			threshold:      12,
 			fixture:        "base_case-2_regressions_above_10perc.txt",
 			expectedResult: false,
-			expectedOutput: `❌  Performance regression detected — threshold: 12.0%
-🕵️Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
+			expectedOutput: `❌ Performance regression detected — threshold: 12.0%
+🕵 Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
 
-🗄️Package: github.com/yoanm/go-deps-diff/summary
+🗄 Package: github.com/yoanm/go-deps-diff/summary
    🔎 sec/op
       📈 GenerateForChanges-4 — 12.39% slower
 `,
@@ -54,17 +54,17 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 			threshold:      10,
 			fixture:        "base_case-9_regressions_above_10perc_with_3_geomean.txt",
 			expectedResult: false,
-			expectedOutput: `❌  Performance regression detected — threshold: 10.0%
-🕵️Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
+			expectedOutput: `❌ Performance regression detected — threshold: 10.0%
+🕵 Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
 
-🗄️Package: github.com/yoanm/go-deps-diff
+🗄 Package: github.com/yoanm/go-deps-diff
    🔎 sec/op
       📈 Diff_ComposerDiff-4 — 38.10% slower
    🔎 B/op
       📈 Diff_ComposerDiff-4 — 52.24% slower
    🔎 allocs/op
       📈 Diff_ComposerDiff-4 — 36.77% slower
-🗄️Package: github.com/yoanm/go-deps-diff/managers/composer
+🗄 Package: github.com/yoanm/go-deps-diff/managers/composer
    🔎 sec/op
       📈 BuildMapFromBytes-4 — 42.58% slower
       📈 geomean — 11.93% slower
@@ -82,13 +82,13 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 			threshold:      50,
 			fixture:        "base_case-9_regressions_above_10perc_with_3_geomean.txt",
 			expectedResult: false,
-			expectedOutput: `❌  Performance regression detected — threshold: 50.0%
-🕵️Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
+			expectedOutput: `❌ Performance regression detected — threshold: 50.0%
+🕵 Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
 
-🗄️Package: github.com/yoanm/go-deps-diff
+🗄 Package: github.com/yoanm/go-deps-diff
    🔎 B/op
       📈 Diff_ComposerDiff-4 — 52.24% slower
-🗄️Package: github.com/yoanm/go-deps-diff/managers/composer
+🗄 Package: github.com/yoanm/go-deps-diff/managers/composer
    🔎 B/op
       📈 BuildMapFromBytes-4 — 61.47% slower
 `,
@@ -98,10 +98,10 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 			threshold:      0.1,
 			fixture:        "base_case-regression_below_1perc.txt",
 			expectedResult: false,
-			expectedOutput: `❌  Performance regression detected — threshold: 0.1%
-🕵️Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
+			expectedOutput: `❌ Performance regression detected — threshold: 0.1%
+🕵 Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
 
-🗄️Package: github.com/yoanm/go-deps-diff-summary
+🗄 Package: github.com/yoanm/go-deps-diff-summary
    🔎 B/op
       📈 GenerateForChanges-4 — 0.35% slower
    🔎 allocs/op
@@ -120,15 +120,15 @@ func Test_Fixtures(t *testing.T) { //nolint:paralleltest // Can't be parallelize
 			threshold:      20,
 			fixture:        "base_case_4_regression_above_20perc.txt",
 			expectedResult: false,
-			expectedOutput: `❌  Performance regression detected — threshold: 20.0%
-🕵️Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
+			expectedOutput: `❌ Performance regression detected — threshold: 20.0%
+🕵 Os "linux" — Arch "amd64" — CPU "AMD EPYC 7763 64-Core Processor"
 
-🗄️Package: github.com/yoanm/go-deps-diff
+🗄 Package: github.com/yoanm/go-deps-diff
    🔎 B/op
       📈 Diff_ComposerDiff-4 — 28.86% slower
    🔎 allocs/op
       📈 Diff_ComposerDiff-4 — 34.91% slower
-🗄️Package: github.com/yoanm/go-deps-diff/managers/composer
+🗄 Package: github.com/yoanm/go-deps-diff/managers/composer
    🔎 B/op
       📈 BuildMapFromBytes-4 — 28.32% slower
    🔎 allocs/op

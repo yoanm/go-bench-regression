@@ -577,14 +577,14 @@ func Test_printRegressions(t *testing.T) {
 	pkgOrder := []string{"package1", "package2"}
 	sectionOrder := []string{unknownSection}
 
-	expected := `❌  Performance regression detected — threshold: 5.0%
-🕵️Os "linux" — Arch "amd64" — CPU "Intel"
+	expected := `❌ Performance regression detected — threshold: 5.0%
+🕵 Os "linux" — Arch "amd64" — CPU "Intel"
 
-🗄️Package: package1
+🗄 Package: package1
    🔎 Unknown section
       📈  Bench1 — 10.00% slower
       📈  Bench2 — 15.00% slower
-🗄️Package: package2
+🗄 Package: package2
    🔎 Unknown section
       📈  Bench3 — 5.50% slower
 `
