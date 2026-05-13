@@ -21,15 +21,14 @@ defaults:
 env:
   HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
   CURR_REF: ${{ github.event.pull_request.head.sha || github.event.after }}
+  CURR_BENCH_FILE: ${{ runner.temp }}/current.txt
+  PREV_BENCH_FILE: ${{ runner.temp }}/previous.txt
+  BENCHSTAT_FILE: ${{ runner.temp }}/benchstat.txt
 jobs:
   benchmark:
     name: Regression check
     if: github.event_name == 'push' || ( github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'with-benchmark') )
     runs-on: ubuntu-latest
-    env:
-      CURR_BENCH_FILE: ${{ runner.temp }}/current.txt
-      PREV_BENCH_FILE: ${{ runner.temp }}/previous.txt
-      BENCHSTAT_FILE: ${{ runner.temp }}/benchstat.txt
     steps:
       - name: Checkout current code
         uses: actions/checkout@v6
