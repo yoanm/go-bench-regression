@@ -75,9 +75,7 @@ func Run(input *bufio.Scanner, threshold float64, output io.StringWriter) bool {
 		return false
 	}
 
-	if _, err := output.WriteString("🎉 All good\n"); err != nil {
-		slog.Error("Error writing the output: " + err.Error())
-	}
+	writeToOutput(output, "🎉 All good\n")
 
 	return true
 }
@@ -213,7 +211,11 @@ func printRegressions(
 		})
 	})
 
-	if _, err := output.WriteString(txt.String()); err != nil {
+	writeToOutput(output, txt.String())
+}
+
+func writeToOutput(output io.StringWriter, txt string) {
+	if _, err := output.WriteString(txt); err != nil {
 		slog.Error("Error writing the output: " + err.Error())
 	}
 }
