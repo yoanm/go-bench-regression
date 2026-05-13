@@ -126,6 +126,8 @@ benchstat baseline.txt after.txt | bench-reg 10
   run: benchstat baseline.txt after.txt | bench-reg 10
 ```
 
+You can also take a look at [CI-benchmark.yml](./.github/workflows/CI-benchmark.yml) for a deeper integration
+
 ## Threshold Guidelines
 
 - **1-5%**: Strict threshold for performance-critical code
@@ -165,13 +167,14 @@ The tool:
 When regressions are detected:
 
 ```
-ERROR Performance regression detected (threshold: 10.0%):
-ERROR Os "linux" / Arch "amd64" / CPU "Intel(R) Core(TM)"
-ERROR Package: github.com/user/mypackage
-ERROR   B/op
-ERROR     - BenchmarkFunc (12.39% slower)
-ERROR   allocs/op
-ERROR     - BenchmarkFunc (11.75% slower)
+❌ Performance regression detected — threshold: 10.0%
+🕵️ Os "linux" — Arch "amd64" — CPU "Intel(R) Core(TM)"
+
+🗄️ Package: github.com/user/mypackage
+   🔎 B/op
+      📈 BenchmarkFunc — 12.39% slower
+   🔎 allocs/op
+      📈 BenchmarkFunc — 11.75% slower
 ```
 
 ## Development

@@ -53,7 +53,7 @@ func execute() int {
 		return missingInputExitCode
 	}
 
-	if !benchreg.Run(bufio.NewScanner(os.Stdin), threshold) {
+	if !benchreg.Run(bufio.NewScanner(os.Stdin), threshold, os.Stdout) {
 		return regressionDetectedExitCode
 	}
 

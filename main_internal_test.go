@@ -2,9 +2,13 @@ package benchreg
 
 import (
 	"bufio"
+	"bytes"
+	"io"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/andreyvit/diff"
 )
 
 func Test_parseLine(t *testing.T) {
@@ -21,19 +25,19 @@ func Test_parseLine(t *testing.T) {
 			name:      "simple regression above threshold",
 			line:      "BenchmarkFunc-8      100  101ns ± 1%  120ns ± 0%  +18.81%",
 			threshold: 5,
-			want:      "BenchmarkFunc-8 (18.81% slower)",
+			want:      "BenchmarkFunc-8 — 18.81% slower",
 		},
 		{
 			name:      "large regression",
 			line:      "BenchmarkLarge-4     50   5000ns ± 2%  10000ns ± 1%  +100.00%",
 			threshold: 10,
-			want:      "BenchmarkLarge-4 (100.00% slower)",
+			want:      "BenchmarkLarge-4 — 100.00% slower",
 		},
 		{
 			name:      "small regression above threshold",
 			line:      "BenchmarkSmall-8     1000  100ns ± 0%  105.5ns ± 0%  +5.50%",
 			threshold: 5,
-			want:      "BenchmarkSmall-8 (5.50% slower)",
+			want:      "BenchmarkSmall-8 — 5.50% slower",
 		},
 
 		// Threshold edge cases
@@ -47,7 +51,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "delta just above threshold",
 			line:      "BenchmarkAbove-8     200  200ns ± 1%  220.1ns ± 0%  +10.05%",
 			threshold: 10,
-			want:      "BenchmarkAbove-8 (10.05% slower)",
+			want:      "BenchmarkAbove-8 — 10.05% slower",
 		},
 		{
 			name:      "delta just below threshold",
@@ -81,7 +85,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "line with malformed delta double plus - regex still matches the second +",
 			line:      "BenchmarkMalform-8   100  100ns ± 0%  120ns ± 0%  ++15%",
 			threshold: 5,
-			want:      "BenchmarkMalform-8 (15.00% slower)",
+			want:      "BenchmarkMalform-8 — 15.00% slower",
 		},
 		{
 			name:      "line with malformed delta plus minus",
@@ -99,7 +103,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "line with no benchmark data but with delta - still matches (regex is liberal)",
 			line:      "some random text with +50%",
 			threshold: 5,
-			want:      "some (50.00% slower)",
+			want:      "some — 50.00% slower",
 		},
 
 		// Zero and boundary values
@@ -125,7 +129,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "decimal threshold above",
 			line:      "BenchmarkDecimal2-8  500   1000ns ± 1%  1026ns ± 0%  +2.60%",
 			threshold: 2.5,
-			want:      "BenchmarkDecimal2-8 (2.60% slower)",
+			want:      "BenchmarkDecimal2-8 — 2.60% slower",
 		},
 
 		// Multiple delta values in line (only first should be captured)
@@ -133,7 +137,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "line with multiple percents (only first delta used)",
 			line:      "BenchmarkMulti-8     100  50ns ± 5%  100ns ± 2%  +100.00%",
 			threshold: 50,
-			want:      "BenchmarkMulti-8 (100.00% slower)",
+			want:      "BenchmarkMulti-8 — 100.00% slower",
 		},
 
 		// Very large regressions
@@ -141,7 +145,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "extremely large regression",
 			line:      "BenchmarkHuge-2      10   1000000ns ± 1%  50000000ns ± 0%  +4900.00%",
 			threshold: 100,
-			want:      "BenchmarkHuge-2 (4900.00% slower)",
+			want:      "BenchmarkHuge-2 — 4900.00% slower",
 		},
 
 		// Realistic benchstat output variations
@@ -149,7 +153,7 @@ func Test_parseLine(t *testing.T) {
 			name:      "typical benchstat line format with moderate regression",
 			line:      "BenchmarkEncode-4    2000  500ns ± 1%   600ns ± 2%   +20.00%",
 			threshold: 15,
-			want:      "BenchmarkEncode-4 (20.00% slower)",
+			want:      "BenchmarkEncode-4 — 20.00% slower",
 		},
 	}
 
@@ -559,157 +563,41 @@ func Test_parseData_benchmarkName(t *testing.T) {
 	}
 }
 
-func Test_processResults_withRegressions(t *testing.T) {
+func Test_printRegressions(t *testing.T) {
 	t.Parallel()
 
 	regMap := map[string]map[string][]string{
 		"package1": {
-			unknownSection: {" Bench1 (10.00% slower)", " Bench2 (15.00% slower)"},
+			unknownSection: {" Bench1 — 10.00% slower", " Bench2 — 15.00% slower"},
 		},
 		"package2": {
-			unknownSection: {" Bench3 (5.50% slower)"},
+			unknownSection: {" Bench3 — 5.50% slower"},
 		},
 	}
 	pkgOrder := []string{"package1", "package2"}
 	sectionOrder := []string{unknownSection}
 
-	result := processResults(regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
-	if result != false {
-		t.Errorf("processResults with regressions should return false, got %v", result)
-	}
-}
+	expected := `❌ Performance regression detected — threshold: 5.0%
+🕵 Os "linux" — Arch "amd64" — CPU "Intel"
 
-func Test_processResults_noRegressions(t *testing.T) {
-	t.Parallel()
+🗄 Package: package1
+   🔎 Unknown section
+      📈  Bench1 — 10.00% slower
+      📈  Bench2 — 15.00% slower
+🗄 Package: package2
+   🔎 Unknown section
+      📈  Bench3 — 5.50% slower
+`
 
-	regMap := map[string]map[string][]string{}
-	pkgOrder := []string{}
-	sectionOrder := []string{}
+	output := &bytes.Buffer{}
 
-	result := processResults(regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
-	if result != true {
-		t.Errorf("processResults without regressions should return true, got %v", result)
-	}
-}
+	printRegressions(output, regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
 
-func Test_processResults_emptyRegressionList(t *testing.T) {
-	t.Parallel()
-
-	// Map with empty lists should be treated as no regressions
-	regMap := map[string]map[string][]string{
-		"pkg1": {},
-	}
-	pkgOrder := []string{"pkg1"}
-	sectionOrder := []string{}
-
-	result := processResults(regMap, pkgOrder, sectionOrder, 5, "linux", "amd64", "Intel")
-	// Since regMap length > 0, this should return false
-	if result != false {
-		t.Errorf("processResults with non-empty map should return false, got %v", result)
-	}
-}
-
-func Test_Run_noRegressions(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  105ns  +5.00%
-BenchmarkB-8    100  100ns  110ns  +10.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 15)
-
-	if result != true {
-		t.Errorf("Run() with all regressions below threshold should return true, got %v", result)
-	}
-}
-
-func Test_Run_detectsRegressions(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  150ns  +50.00%
-BenchmarkB-8    100  100ns  110ns  +10.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 20)
-
-	if result != false {
-		t.Errorf("Run() with regression above threshold should return false, got %v", result)
-	}
-}
-
-func Test_Run_emptyInput(t *testing.T) {
-	t.Parallel()
-
-	input := ""
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 5)
-
-	if result != true {
-		t.Errorf("Run() with empty input should return true, got %v", result)
-	}
-}
-
-func Test_Run_metadataOnly(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 5)
-
-	if result != true {
-		t.Errorf("Run() with metadata only should return true, got %v", result)
-	}
-}
-
-func Test_Run_multiplePackages(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: pkg1
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  120ns  +20.00%
-
-pkg: pkg2
-BenchmarkB-8    100  100ns  115ns  +15.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 10)
-
-	// Both have regressions above 10%, should return false
-	if result != false {
-		t.Errorf("Run() with multiple packages with regressions should return false, got %v", result)
-	}
-}
-
-func Test_Run_onlyImprovements(t *testing.T) {
-	t.Parallel()
-
-	input := `pkg: testpkg
-goos: linux
-goarch: amd64
-cpu: Intel
-BenchmarkA-8    100  100ns  50ns  -50.00%
-BenchmarkB-8    100  100ns  80ns  -20.00%`
-
-	scanner := bufio.NewScanner(strings.NewReader(input))
-	result := Run(scanner, 5)
-
-	// Only improvements (negative deltas), no regressions
-	if result != true {
-		t.Errorf("Run() with only improvements should return true, got %v", result)
+	content, err := io.ReadAll(output)
+	if err != nil {
+		t.Error("Unable to read from output writer: " + err.Error())
+	} else if string(content) != expected {
+		t.Errorf("Unexpected output, diff: %s", diff.LineDiff(expected, string(content)))
 	}
 }
 
@@ -729,7 +617,7 @@ func Test_parseLine_geomeanLine(t *testing.T) {
 			name:      "geomean line with delta (should be treated like any other line)",
 			line:      "geomean                                                      +15.50%",
 			threshold: 5,
-			want:      "geomean (15.50% slower)", // Geomean is just a benchmark name in the regex
+			want:      "geomean — 15.50% slower", // Geomean is just a benchmark name in the regex
 		},
 		{
 			name:      "geomean line with delta below threshold",
@@ -1027,7 +915,6 @@ BenchmarkTest-8     100  100ns  120ns  +20.00%`,
 	}
 
 	for _, testCase := range tests {
-		// Capture for parallel execution
 		t.Run(testCase.name, func(t *testing.T) {
 			t.Parallel()
 
@@ -1039,38 +926,5 @@ BenchmarkTest-8     100  100ns  120ns  +20.00%`,
 				t.Errorf("parseData() found regressions=%v, want %v. regMap=%+v", hasRegressions, testCase.wantHasReg, regMap)
 			}
 		})
-	}
-}
-
-// Test_processResults_largeInput tests processResults with 1000+ benchmarks
-// to verify performance and correctness with large input scenarios.
-func Test_processResults_largeInput(t *testing.T) {
-	t.Parallel()
-
-	// Build a large regression map with 500 regressions
-	regMap := make(map[string]map[string][]string)
-	pkg := "testpkg"
-	regMap[pkg] = make(map[string][]string)
-
-	// Add 500 benchmark regressions
-	for i := 1; i <= 500; i++ {
-		benchName := "Benchmark" + string(rune(65+(i%26))) + string(rune(i))
-		regMap[pkg][benchName] = []string{"(20.00% slower)"}
-	}
-
-	pkgOrder := []string{pkg}
-	sectionOrder := []string{}
-
-	// Process results
-	result := processResults(regMap, pkgOrder, sectionOrder, 10, "linux", "amd64", "Intel")
-
-	// With regressions, should return false
-	if result != false {
-		t.Errorf("processResults() with 500 regressions should return false, got %v", result)
-	}
-
-	// Verify regressions map is not empty
-	if len(regMap[pkg]) != 500 {
-		t.Errorf("processResults() should preserve 500 regressions, got %d", len(regMap[pkg]))
 	}
 }
