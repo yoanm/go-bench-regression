@@ -18,12 +18,6 @@ defaults:
   run:
     shell: bash # Mandatory to take advantage of "-o pipefail" and stop execution at first error even with "cmd | tee ..."
 
-env:
-  HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
-  CURR_REF: ${{ github.event.pull_request.head.sha || github.event.after }}
-  CURR_BENCH_FILE: ${{ runner.temp }}/current.txt
-  PREV_BENCH_FILE: ${{ runner.temp }}/previous.txt
-  BENCHSTAT_FILE: ${{ runner.temp }}/benchstat.txt
 jobs:
   benchmark:
     name: Regression check
@@ -33,8 +27,9 @@ jobs:
       - name: Checkout current code
         uses: actions/checkout@v6
         with:
-          repository: ${{ env.HEAD_REPO }} # Specify the repository (although mostly useful for PR from a fork)
-          ref: ${{ env.CURR_REF }}
+          # Specify the repository (although mostly useful for PR from a fork)
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.event.after }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -53,7 +48,7 @@ jobs:
           go install ./cmd/bench-reg
 
       - name: Run benchmarks on current code
-        run: make benchmark bench_o="-count=7" | tee ${{ env.CURR_BENCH_FILE }}
+        run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/current.txt
 
       - name: Checkout original code
         uses: actions/checkout@v6
@@ -61,25 +56,25 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha || github.event.before }}
 
       - name: Run benchmarks on original code
-        run: make benchmark bench_o="-count=7" | tee ${{ env.PREV_BENCH_FILE }}
+        run: make benchmark bench_o="-count=7" | tee ${{ runner.temp }}/previous.txt
 
       - name: Compare benchmarks
-        run: benchstat Previous=${{ env.PREV_BENCH_FILE }} Current=${{ env.CURR_BENCH_FILE }} | tee ${{ env.BENCHSTAT_FILE }}
+        run: benchstat Previous=${{ runner.temp }}/previous.txt Current=${{ runner.temp }}/current.txt | tee ${{ runner.temp }}/benchstat.txt
 
       - name: Upload benchmark results
         uses: actions/upload-artifact@v7
         with:
           name: benchmark-results
           path: |
-            ${{ env.CURR_BENCH_FILE }}
-            ${{ env.PREV_BENCH_FILE }}
-            ${{ env.BENCHSTAT_FILE }}
+            ${{ runner.temp }}/current.txt
+            ${{ runner.temp }}/previous.txt
+            ${{ runner.temp }}/benchstat.txt
 
       - name: Build summary
         run: |
           echo "## Benchmark Comparison" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat ${{ env.BENCHSTAT_FILE }} >> $GITHUB_STEP_SUMMARY
+          cat ${{ runner.temp }}/benchstat.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Detect regressions
@@ -96,7 +91,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "## Regressions" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat ${{ env.BENCHSTAT_FILE }} | bench-reg 10 > $PIPE_FILE
+          cat ${{ runner.temp }}/benchstat.txt | bench-reg 10 > $PIPE_FILE
           res=$?
           echo '```' >> $GITHUB_STEP_SUMMARY
           
