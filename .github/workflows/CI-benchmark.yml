@@ -72,10 +72,10 @@ jobs:
 
       - name: Build summary
         run: |
-          echo "## Benchmark Comparison" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat ${{ runner.temp }}/benchstat.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "## Benchmark Comparison" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat ${{ runner.temp }}/benchstat.txt >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
 
       - name: Detect regressions
         env:
@@ -84,17 +84,16 @@ jobs:
           # /!\ Use fifo rather than pipe to continue execution (in order to close the markdow code block) even
           # in case of error with bench-reg (which is the case when there is regressions)
           PIPE_FILE="${{ runner.temp }}/pipe"
-          mkfifo $PIPE_FILE
-          tee -a $GITHUB_STEP_SUMMARY < $PIPE_FILE &
-
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "## Regressions" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat ${{ runner.temp }}/benchstat.txt | bench-reg 10 > $PIPE_FILE
-          res=$?
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          mkfifo "$PIPE_FILE"
+          tee -a "$GITHUB_STEP_SUMMARY" < "$PIPE_FILE" &
           
-          rm -f $PIPE_FILE
+          
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Regressions" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat ${{ runner.temp }}/benchstat.txt | bench-reg 10 > "$PIPE_FILE"
+          res=$?
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          
+          rm -f "$PIPE_FILE"
           exit $res
-  
