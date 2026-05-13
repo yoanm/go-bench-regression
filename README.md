@@ -1,4 +1,4 @@
-# go-bench-regression<br/><sup><sub>Go benchmark regresssion detector</sub></sup>
+# bench-reg<br/><sup><sub>Go benchmark regresssion detector</sub></sup>
 
 [![License](https://img.shields.io/github/license/yoanm/go-bench-regression.svg)](https://github.com/yoanm/go-bench-regression)
 [![Code size](https://img.shields.io/github/languages/code-size/yoanm/go-bench-regression.svg)](https://github.com/yoanm/go-bench-regression)
