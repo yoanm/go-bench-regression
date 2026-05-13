@@ -72,3 +72,13 @@ jobs:
           fi
           echo "Documentation is up to date 👌"
           exit 0
+
+      - name: Tidy deps
+        run: |
+          go mod tidy
+          if [ ! "$(git status -s | wc -l)" -eq 0 ]; then
+              echo "::error::Run 'go mod tidy' to remove useless deps"
+              exit 1;
+          fi
+          echo "Tidy deps 👌"
+          exit 0
