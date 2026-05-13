@@ -5,10 +5,10 @@ on:
     types:
       - opened
       - synchronize
-    paths: ["**.go"]
+    paths: ["**.go", "go.sum", "go.mod"]
   push:
     branches: [master]
-    paths: ["**.go"]
+    paths: ["**.go", "go.sum", "go.mod"]
 
 concurrency:
   group: "${{ github.workflow }}-${{ github.head_ref || github.ref }}"
