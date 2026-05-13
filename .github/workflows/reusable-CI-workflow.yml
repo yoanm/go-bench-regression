@@ -76,7 +76,7 @@ jobs:
       - name: Tidy deps
         run: |
           go mod tidy
-          if [ ! "$(git status -s go.sum | wc -l)" -eq 0 ]; then
+          if [ ! "$(git status -s | wc -l)" -eq 0 ]; then
               echo "::error::Run 'go mod tidy' to remove useless deps"
               exit 1;
           fi
