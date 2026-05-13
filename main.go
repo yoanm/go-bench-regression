@@ -195,18 +195,18 @@ func printRegressions(
 	cpuTxt string,
 ) {
 	txt := strings.Builder{}
-	fmt.Fprintf(&txt, "❌  Performance regression detected — threshold: %.1f%%\n", threshold)
-	fmt.Fprintf(&txt, "🕵️Os %q — Arch %q — CPU %q\n", osTxt, archTxt, cpuTxt)
+	fmt.Fprintf(&txt, "❌ Performance regression detected — threshold: %.1f%%\n", threshold)
+	fmt.Fprintf(&txt, "🕵 Os %q — Arch %q — CPU %q\n", osTxt, archTxt, cpuTxt)
 	txt.WriteString("\n")
 
 	// Sort packages and section in order to have a deterministic output (way easier for tests)
 	inOrderMapIteratorHelper(regMap, pkgOrder, func(pkg string, subBegMap map[string][]string) {
-		txt.WriteString("🗄️Package: " + pkg + "\n")
+		txt.WriteString("🗄 Package: " + pkg + "\n")
 		inOrderMapIteratorHelper(subBegMap, sectionOrder, func(section string, regList []string) {
-			txt.WriteString("   🔎 " + section + "\n")
+			txt.WriteString("   🔎 " + section + "\n")
 
 			for _, reg := range regList {
-				txt.WriteString("      📈 " + reg + "\n")
+				txt.WriteString("      📈 " + reg + "\n")
 			}
 		})
 	})
