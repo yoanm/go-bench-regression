@@ -8,7 +8,7 @@
 ![Last commit](https://badgen.net/github/last-commit/yoanm/go-bench-regression)
 
 [![Codacy Badge](https://app.codacy.com/project/badge/Grade/ebeacd3a91a74fef8a8ed4ea879ede72)](https://app.codacy.com/gh/yoanm/go-bench-regression/dashboard?utm_source=gh&utm_medium=referral&utm_content=&utm_campaign=Badge_grade)
-[![Go Report Card](https://goreportcard.com/badge/github.com/yoanm/go-bench-regression?)](https://goreportcard.com/report/github.com/yoanm/go-bench-regression)
+[![Go Report Card](https://goreportcard.com/badge/github.com/yoanm/go-bench-regression)](https://goreportcard.com/report/github.com/yoanm/go-bench-regression)
 
 [![CI](https://github.com/yoanm/go-bench-regression/actions/workflows/CI.yml/badge.svg?branch=master)](https://github.com/yoanm/go-bench-regression/actions/workflows/CI.yml)
 [![codecov](https://codecov.io/gh/yoanm/go-bench-regression/branch/master/graph/badge.svg?token=NHdwEBUFK5)](https://codecov.io/gh/yoanm/go-bench-regression)
